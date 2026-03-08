@@ -54,7 +54,7 @@ export function QuestionPaperHeader({ className, onEditClick, isEditMode = false
                         }`}
                     >
                         <Pencil className="w-4 h-4" />
-                        <span>Edit</span>
+                        <span>{isEditMode ? "Done" : "Edit"}</span>
                     </button>
                 )}
             </div>

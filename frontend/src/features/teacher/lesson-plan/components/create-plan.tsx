@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { DurationSelect } from "@/features/teacher/lesson-plan/components/duration-selector"
 import { ObjectiveSection } from "@/features/teacher/lesson-plan/components/objective-section"
 import { FileUploadSection } from "@/features/teacher/lesson-plan/components/file-upload-section"
+import { GeneratingOverlay } from "@/components/generating-overlay"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { useChapters } from "@/hooks/use-chapters"
@@ -109,9 +110,8 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
         return selectedClassId !== "" &&
                selectedSubjectId !== "" &&
                selectedChapterIds.length > 0 &&
-               duration !== "" &&
-               objective.trim() !== ""
-    }, [selectedClassId, selectedSubjectId, selectedChapterIds, duration, objective])
+               duration !== ""
+    }, [selectedClassId, selectedSubjectId, selectedChapterIds, duration])
 
     const toggleChapter = (chapterId: string) => {
         setSelectedChapterIds((prev) =>
@@ -231,7 +231,8 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative">
+            {isLoading && <GeneratingOverlay type="lesson" onCancel={() => setIsLoading(false)} />}
             {/* Scrollable Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
                 {/* Chapters Section */}

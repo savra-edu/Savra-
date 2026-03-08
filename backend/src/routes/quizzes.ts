@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { authMiddleware, authorize } from '../middleware/auth';
 import { validate, validateQuery } from '../middleware/validate';
@@ -234,6 +235,54 @@ router.get(
           totalPages: Math.ceil(total / limit),
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/quizzes/:id/share - Get or create share link for quiz
+router.post(
+  '/:id/share',
+  authMiddleware,
+  authorize('teacher'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.id;
+      const quizId = req.params.id as string;
+
+      const teacherId = await getTeacherId(userId);
+      if (!teacherId) {
+        return notFoundResponse(res, 'Teacher profile not found');
+      }
+
+      const quiz = await prisma.quiz.findFirst({
+        where: { id: quizId, teacherId },
+        select: {
+          id: true,
+          shareToken: true,
+          _count: { select: { questions: true } },
+        },
+      });
+
+      if (!quiz) {
+        return notFoundResponse(res, 'Quiz not found');
+      }
+
+      if (quiz._count.questions === 0) {
+        return errorResponse(res, 'Generate questions before sharing', 400, 'NO_QUESTIONS');
+      }
+
+      let shareToken = quiz.shareToken;
+      if (!shareToken) {
+        shareToken = crypto.randomBytes(16).toString('base64url');
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: { shareToken },
+        });
+      }
+
+      return successResponse(res, { shareToken });
     } catch (error) {
       next(error);
     }
@@ -503,6 +552,7 @@ router.post(
           totalQuestions: true,
           totalMarks: true,
           difficultyLevel: true,
+          referenceFileUrl: true,
           subject: { select: { name: true } },
           chapters: {
             select: {
@@ -540,7 +590,8 @@ router.post(
           chapterNames,
           questionsToGenerate,
           difficultyLevel,
-          quizObjective
+          quizObjective,
+          quiz.referenceFileUrl ?? undefined
         );
       } catch (aiError) {
         console.error('Gemini AI generation error:', aiError);

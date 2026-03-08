@@ -1,15 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import type React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { X, Upload, Camera, Pencil, Loader2 } from "lucide-react"
+import { X, Upload, Camera, Loader2 } from "lucide-react"
 import ModifyLesson from "./modify-lesson-plan"
 import { ChapterSelector } from "./chapter-selector"
 import { DurationSelect } from "./duration-selector"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
+import { uploadReferenceFile } from "@/lib/upload-reference-file"
 import { useFetch } from "@/hooks/use-api"
 
 const SUGGESTED_CHAPTERS = [
@@ -38,6 +39,8 @@ export default function ModifyDetails() {
     const [uploadedFile, setUploadedFile] = useState<File | null>(null)
     const [isRegenerating, setIsRegenerating] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const fileInputRefMobile = useRef<HTMLInputElement>(null)
+    const fileInputRefDesktop = useRef<HTMLInputElement>(null)
 
     // Fetch existing lesson data
     const { data: lesson, isLoading } = useFetch<any>(
@@ -94,11 +97,23 @@ export default function ModifyDetails() {
         setError(null)
 
         try {
-            // Step 1: Save the modified objective to the lesson
-            await api.put(`/lessons/${lessonId}`, {
+            let referenceFileUrl: string | undefined
+            if (uploadedFile) {
+                try {
+                    referenceFileUrl = await uploadReferenceFile(uploadedFile)
+                } catch {
+                    setError("Failed to upload file. Please try again.")
+                    setIsRegenerating(false)
+                    return
+                }
+            }
+
+            const updatePayload: Record<string, unknown> = {
                 objective: objective || null,
                 numberOfPeriods: duration ? parseInt(duration) : undefined,
-            })
+            }
+            if (referenceFileUrl !== undefined) updatePayload.referenceFileUrl = referenceFileUrl
+            await api.put(`/lessons/${lessonId}`, updatePayload)
 
             // Step 2: Regenerate the lesson plan with new objective
             await api.post(`/lessons/${lessonId}/generate`, { regenerate: true })
@@ -137,6 +152,23 @@ export default function ModifyDetails() {
                         <DurationSelect value={duration} onChange={setDuration} />
                     </div>
 
+                    {/* Suggestions Section */}
+                    <div className="mb-6">
+                        <h2 className="text-base font-bold text-[#000000] mb-4">Suggestions</h2>
+                        <div className="grid grid-cols-2 gap-3">
+                            {suggestions.map((suggestion, index) => (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => setObjective(prev => prev ? `${prev}. ${suggestion}` : suggestion)}
+                                    className="px-4 py-3 bg-white border-2 border-[#4612CF87] rounded-lg text-xs font-medium hover:bg-[#EFE9F8] transition cursor-pointer"
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     {/* Lesson Objective Section */}
                     <div className="mb-6">
                         <div className="bg-[#EFE9F8] rounded-lg px-4 py-3 flex items-center justify-between border border-[#F6F6F9] mb-0">
@@ -157,18 +189,21 @@ export default function ModifyDetails() {
                         <div className="flex flex-row gap-3">
                             <div className="relative flex-1">
                                 <input 
+                                  ref={fileInputRefMobile}
                                   type="file" 
                                   id="file-upload-mobile" 
                                   onChange={handleFileChange} 
                                   className="hidden"
                                   accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                                 />
-                                <label htmlFor="file-upload-mobile">
-                                    <Button className="w-full bg-[#B595FF] hover:bg-[#A085EF] text-white px-4 py-4 rounded-xl font-semibold cursor-pointer flex items-center justify-center gap-2">
-                                        <Upload className="w-4 h-4" />
-                                        Upload a File
-                                    </Button>
-                                </label>
+                                <Button
+                                    type="button"
+                                    onClick={() => fileInputRefMobile.current?.click()}
+                                    className="w-full bg-[#B595FF] hover:bg-[#A085EF] text-white px-4 py-4 rounded-xl font-semibold cursor-pointer flex items-center justify-center gap-2"
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    Upload a File
+                                </Button>
                             </div>
                             <Button
                                 onClick={handlePhotoCapture}
@@ -206,13 +241,18 @@ export default function ModifyDetails() {
             {/* Desktop Layout */}
             <div className="hidden lg:grid h-full grid-cols-[3fr_2fr] gap-8 overflow-hidden">
                 <div className="overflow-y-auto">
-                    <ModifyLesson />
+                    <ModifyLesson showModifyPromptButton={false} />
                 </div>
                 <div className="bg-[#F4F4F4] mt-8 rounded-3xl flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="p-6 flex justify-between items-center">
                         <h1 className="font-bold text-2xl text-[#242220]">Edit prompt</h1>
-                        <button className="p-4 bg-white rounded-full">
+                        <button
+                            type="button"
+                            onClick={() => router.push(lessonId ? `/lesson-plan/edit?id=${lessonId}` : "/lesson-plan")}
+                            className="p-2 hover:bg-gray-200 rounded-full transition cursor-pointer"
+                            aria-label="Close"
+                        >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -226,7 +266,9 @@ export default function ModifyDetails() {
                                 {suggestions.map((suggestion, index) => (
                                     <button
                                         key={index}
-                                        className="px-4 py-3 bg-white border-2 border-[#4612CF87] items-center rounded-lg text-xs font-medium"
+                                        type="button"
+                                        onClick={() => setObjective(prev => prev ? `${prev}. ${suggestion}` : suggestion)}
+                                        className="px-4 py-3 bg-white border-2 border-[#4612CF87] items-center rounded-lg text-xs font-medium hover:bg-[#EFE9F8] transition cursor-pointer"
                                     >
                                         {suggestion}
                                     </button>
@@ -253,18 +295,21 @@ export default function ModifyDetails() {
                     {/* Bottom Action Buttons */}
                     <div className="flex justify-around items-center gap-12 m-4">
                         <input
+                            ref={fileInputRefDesktop}
                             type="file"
                             id="file-upload-modify"
                             onChange={handleFileChange}
                             className="hidden"
                             accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                         />
-                        <label htmlFor="file-upload-modify">
-                            <button className="w-[160px] bg-[#B595FF] text-white p-4 rounded-lg font-semibold flex text-xs items-center justify-center gap-2 cursor-pointer">
-                                <Upload className="w-4 h-4" />
-                                Upload a File
-                            </button>
-                        </label>
+                        <button
+                            type="button"
+                            onClick={() => fileInputRefDesktop.current?.click()}
+                            className="w-[160px] bg-[#B595FF] text-white p-4 rounded-lg font-semibold flex text-xs items-center justify-center gap-2 cursor-pointer hover:bg-[#a07fd4] transition"
+                        >
+                            <Upload className="w-4 h-4" />
+                            Upload a File
+                        </button>
                         <button
                             onClick={handleModifyAndRegenerate}
                             disabled={isRegenerating || isLoading || !lessonId}

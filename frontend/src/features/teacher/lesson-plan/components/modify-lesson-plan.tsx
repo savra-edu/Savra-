@@ -9,6 +9,9 @@ import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { Lesson } from "@/types/api"
 import { generateLessonPlanPDF } from "@/lib/pdf-generator"
+import { downloadLessonPlanDoc } from "@/lib/doc-generator"
+import { DownloadDropdown } from "@/components/download-dropdown"
+import { getAppBaseUrl } from "@/lib/app-url"
 
 interface LessonSection {
   title: string
@@ -18,9 +21,11 @@ interface LessonSection {
 
 interface ModifyLessonPlanProps {
   lessonId?: string
+  /** When true (default), shows the Modify Prompt button. Set false when the Edit prompt sidebar is already visible (e.g. on the modify page). */
+  showModifyPromptButton?: boolean
 }
 
-function ModifyLessonPlanContent({ lessonId: propLessonId }: ModifyLessonPlanProps) {
+function ModifyLessonPlanContent({ lessonId: propLessonId, showModifyPromptButton = true }: ModifyLessonPlanProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const lessonId = propLessonId || searchParams.get("id")
@@ -83,57 +88,63 @@ function ModifyLessonPlanContent({ lessonId: propLessonId }: ModifyLessonPlanPro
     }
   }, [lesson, user])
 
-  // Handle download - Generate PDF
-  const handleDownload = useCallback(() => {
+  const handleDownloadPDF = useCallback(() => {
     if (!lesson) return
-    
-    // Check if lesson has new template format
     if (lesson.periods && lesson.periods.length > 0) {
       const { url, filename } = generateLessonPlanPDF(lesson, user?.name || "")
-      // Trigger download
-      const link = document.createElement('a')
+      const link = document.createElement("a")
       link.href = url
       link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      // Revoke URL after download
       setTimeout(() => URL.revokeObjectURL(url), 100)
     } else {
-      // Fallback to print for old format
       window.print()
     }
   }, [lesson, user])
 
-  // Handle share
-  const handleShare = useCallback(async () => {
-    const shareUrl = window.location.href
-    const shareData = {
-      title: lesson?.title || "Lesson Plan",
-      text: `Check out this lesson plan: ${lesson?.title || "Lesson Plan"}`,
-      url: shareUrl,
-    }
+  const handleDownloadWord = useCallback(() => {
+    if (!lesson || !lesson.periods?.length) return
+    downloadLessonPlanDoc(lesson, user?.name || "")
+  }, [lesson, user])
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData)
+  // Handle share - fetches public share link via API
+  const handleShare = useCallback(async () => {
+    if (!lessonId || !lesson) return
+    try {
+      const res = await api.post<{ success: boolean; data: { shareToken: string } }>(
+        `/lessons/${lessonId}/share`,
+        {}
+      )
+      const shareToken = res?.data?.shareToken
+      if (!shareToken) {
+        alert("Unable to create share link. Save the lesson plan first.")
         return
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          console.error("Share failed:", err)
+      }
+      const shareUrl = `${getAppBaseUrl()}/share/lesson/${shareToken}`
+      const shareData = {
+        title: lesson?.title || "Lesson Plan",
+        text: `Check out this lesson plan: ${lesson?.title || "Lesson Plan"}`,
+        url: shareUrl,
+      }
+
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData)
+          return
+        } catch (err) {
+          if ((err as Error).name !== "AbortError") console.error("Share failed:", err)
         }
       }
-    }
 
-    try {
       await navigator.clipboard.writeText(shareUrl)
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 2000)
     } catch (err) {
-      console.error("Failed to copy link:", err)
-      alert(`Copy this link: ${shareUrl}`)
+      alert(err instanceof Error ? err.message : "Failed to create share link")
     }
-  }, [lesson?.title])
+  }, [lessonId, lesson])
 
   // Handle save lesson plan
   const handleSave = async () => {
@@ -314,8 +325,6 @@ function ModifyLessonPlanContent({ lessonId: propLessonId }: ModifyLessonPlanPro
                 <div className="text-lg font-bold text-gray-900">Grade {lesson.class?.grade || ""}</div>
               </div>
 
-              {/* Date removed per requirements */}
-
               {/* Three Input Boxes */}
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="border border-gray-300 rounded-lg p-3 bg-white">
@@ -335,7 +344,7 @@ function ModifyLessonPlanContent({ lessonId: propLessonId }: ModifyLessonPlanPro
               {/* PDF Display */}
               {lesson.periods && lesson.periods.length > 0 && pdfUrl && (
                 <div className="w-full mt-4">
-                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100" style={{ height: '800px' }}>
+                  <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100" style={{ height: "800px" }}>
                     <iframe
                       src={pdfUrl}
                       className="w-full h-full border-0"
@@ -389,42 +398,44 @@ function ModifyLessonPlanContent({ lessonId: propLessonId }: ModifyLessonPlanPro
 
         {/* Footer Actions */}
         <div className="px-12 py-6 border-t border-gray-200 flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleShare}
-            className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
-          >
-            {linkCopied ? <Check size={18} /> : <Share2 size={18} />}
-            {linkCopied ? "Copied!" : "Share"}
-          </button>
-          <button
-            onClick={handleDownload}
-            className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
-          >
-            <Download size={18} /> Download
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
-          >
-            <Printer size={18} /> Print
-          </button>
+            <button
+              onClick={handleShare}
+              className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
+            >
+              {linkCopied ? <Check size={18} /> : <Share2 size={18} />}
+              {linkCopied ? "Copied!" : "Share"}
+            </button>
+            <DownloadDropdown
+              onDownloadPDF={handleDownloadPDF}
+              onDownloadWord={handleDownloadWord}
+              label="Download"
+              className="bg-[#E2DFF0] border-0 text-gray-700 hover:bg-[#D5D2E3]"
+            />
+            <button
+              onClick={handlePrint}
+              className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
+            >
+              <Printer size={18} /> Print
+            </button>
 
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              onClick={handleModifyPrompt}
-              className="px-6 py-2 text-sm border-2 border-[#DF6647] text-[#DF6647] rounded-lg font-medium"
-            >
-              Modify Prompt
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-6 py-2 text-sm bg-[#DF6647] text-white rounded-lg font-medium disabled:opacity-50"
-            >
-              {isSaving ? "Saving..." : "Save Lesson Plan"}
-            </button>
+            <div className="ml-auto flex items-center gap-3">
+              {showModifyPromptButton && (
+                <button
+                  onClick={handleModifyPrompt}
+                  className="px-6 py-2 text-sm border-2 border-[#DF6647] text-[#DF6647] rounded-lg font-medium"
+                >
+                  Modify Prompt
+                </button>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-6 py-2 text-sm bg-[#DF6647] text-white rounded-lg font-medium disabled:opacity-50"
+              >
+                {isSaving ? "Saving..." : "Save Lesson Plan"}
+              </button>
+            </div>
           </div>
-        </div>
       </div>
     </div>
   )
@@ -445,10 +456,10 @@ function LoadingFallback() {
 }
 
 // Wrapper component with Suspense boundary
-export default function ModifyLessonPlan({ lessonId }: ModifyLessonPlanProps) {
+export default function ModifyLessonPlan({ lessonId, showModifyPromptButton }: ModifyLessonPlanProps) {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <ModifyLessonPlanContent lessonId={lessonId} />
+      <ModifyLessonPlanContent lessonId={lessonId} showModifyPromptButton={showModifyPromptButton} />
     </Suspense>
   )
 }

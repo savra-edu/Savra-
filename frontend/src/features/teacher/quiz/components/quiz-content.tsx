@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { QuizObjectiveSection } from "@/features/teacher/quiz/components/objective-section"
 import { FileUploadSection } from "@/features/teacher/lesson-plan/components/file-upload-section"
+import { GeneratingOverlay } from "@/components/generating-overlay"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api"
@@ -45,14 +46,13 @@ export default function QuizContent({ selectedClassId, selectedSubjectId }: Quiz
         setSelectedChapterIds([])
     }, [selectedSubjectId])
 
-    // Form validation
+    // Form validation (Quiz Objective is optional)
     const isFormValid = useMemo(() => {
         return selectedClassId !== "" &&
                selectedSubjectId !== "" &&
                selectedChapterIds.length > 0 &&
-               totalQuestions !== "" &&
-               objective.trim() !== ""
-    }, [selectedClassId, selectedSubjectId, selectedChapterIds, totalQuestions, objective])
+               totalQuestions !== ""
+    }, [selectedClassId, selectedSubjectId, selectedChapterIds, totalQuestions])
 
     const toggleChapter = (chapterId: string) => {
         setSelectedChapterIds((prev) =>
@@ -109,7 +109,7 @@ export default function QuizContent({ selectedClassId, selectedSubjectId }: Quiz
                 totalMarks: questionsCount, // 1 mark per question by default
                 difficultyLevel: (difficultyLevel || "medium").toLowerCase() as "easy" | "medium" | "hard",
                 timeLimit: parseInt(timeLimit) || 20,
-                objective,
+                objective: objective.trim() || undefined,
                 referenceFileUrl,
             }
 
@@ -129,7 +129,8 @@ export default function QuizContent({ selectedClassId, selectedSubjectId }: Quiz
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative">
+            {isLoading && <GeneratingOverlay type="quiz" onCancel={() => setIsLoading(false)} />}
             {/* Scrollable Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
                 {/* Chapters Section */}
@@ -211,9 +212,9 @@ export default function QuizContent({ selectedClassId, selectedSubjectId }: Quiz
                     </div>
                 </div>
 
-                {/* Objective Section */}
+                {/* Objective Section (optional) */}
                 <div className="mb-6">
-                    <QuizObjectiveSection objective={objective} onObjectiveChange={setObjective} />
+                    <QuizObjectiveSection objective={objective} onObjectiveChange={setObjective} title="Quiz Objective (optional)" />
                 </div>
 
                 {/* Upload Reference Material Section */}

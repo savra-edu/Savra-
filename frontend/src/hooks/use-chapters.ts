@@ -6,8 +6,9 @@ interface Chapter {
   subject?: string
 }
 
-export function useChapters(subjectId?: string) {
-  const endpoint = subjectId ? `/chapters?subject=${subjectId}` : "/chapters"
+export function useChapters(subjectId?: string | null) {
+  // Only fetch when a subject is selected; otherwise skip to avoid loading all chapters
+  const endpoint = subjectId ? `/chapters?subject=${subjectId}` : null
   return useFetch<Chapter[]>(endpoint)
 }
 

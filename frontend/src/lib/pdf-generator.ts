@@ -1,6 +1,7 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Lesson, Quiz } from "@/types/api"
+import { normalizeScientificText } from "./scientific-text"
 
 // Format date for display: "2nd Dec'25"
 function formatDateForDisplay(dateString: string | null | undefined): string {
@@ -488,9 +489,10 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
   doc.setFont("helvetica", "normal")
   doc.setFontSize(9)
   for (let i = 0; i < instructions.length; i++) {
-    const lines = doc.splitTextToSize(`${i + 1}. ${instructions[i]}`, contentWidth - 5)
+    const instText = normalizeScientificText(String(instructions[i]))
+    const lines = doc.splitTextToSize(`${i + 1}. ${instText}`, contentWidth - 5)
     doc.text(lines, margin + 3, yPos)
-    yPos += lines.length * 4 + 1
+    yPos += lines.length * 5 + 1
   }
 
   yPos += 5
@@ -521,9 +523,10 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
       if (section.instructions) {
         doc.setFont("helvetica", "italic")
         doc.setFontSize(9)
-        const instLines = doc.splitTextToSize(section.instructions, contentWidth)
+        const instText = normalizeScientificText(section.instructions)
+        const instLines = doc.splitTextToSize(instText, contentWidth)
         doc.text(instLines, margin, yPos)
-        yPos += instLines.length * 4 + 3
+        yPos += instLines.length * 5 + 3
       }
 
       doc.setFontSize(10)
@@ -542,7 +545,8 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
         doc.setFont("helvetica", "normal")
         const qTextX = margin + 10
-        const qLines = doc.splitTextToSize(question.text || "", contentWidth - 20)
+        const qText = normalizeScientificText(question.text || "")
+        const qLines = doc.splitTextToSize(qText, contentWidth - 20)
         doc.text(qLines, qTextX, yPos)
 
         // Marks
@@ -564,7 +568,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
               doc.addPage()
               yPos = 15
             }
-            const optText = `${optionLabels[j]}) ${question.options[j]}`
+            const optText = `${optionLabels[j]}) ${normalizeScientificText(question.options[j] || "")}`
             const optLines = doc.splitTextToSize(optText, contentWidth - 15)
             doc.text(optLines, margin + 10, yPos)
             yPos += optLines.length * 4 + 1
@@ -592,7 +596,8 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
       doc.setFont("helvetica", "normal")
       const qTextX = margin + 10
-      const qLines = doc.splitTextToSize(question.text || "", contentWidth - 20)
+      const qText = normalizeScientificText(question.text || "")
+      const qLines = doc.splitTextToSize(qText, contentWidth - 20)
       doc.text(qLines, qTextX, yPos)
 
       if (question.marks) {
@@ -612,7 +617,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
             doc.addPage()
             yPos = 15
           }
-          const optText = `${optionLabels[j]}) ${question.options[j]}`
+          const optText = `${optionLabels[j]}) ${normalizeScientificText(question.options[j] || "")}`
           const optLines = doc.splitTextToSize(optText, contentWidth - 15)
           doc.text(optLines, margin + 10, yPos)
           yPos += optLines.length * 4 + 1

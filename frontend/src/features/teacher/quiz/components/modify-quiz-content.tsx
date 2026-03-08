@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { X, Upload, Edit, Plus, Edit2, Camera, Loader2 } from "lucide-react"
@@ -10,6 +10,7 @@ import { QuizObjectiveSection } from "./objective-section"
 import { FileUploadSection } from "@/features/teacher/lesson-plan/components/file-upload-section"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
+import { uploadReferenceFile } from "@/lib/upload-reference-file"
 import { useFetch } from "@/hooks/use-api"
 
 import {
@@ -67,6 +68,7 @@ export default function ModifyQuizDetails() {
     const [time, setTime] = useState("")
     const [isRegenerating, setIsRegenerating] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Fetch existing quiz data
     const { data: quiz, isLoading } = useFetch<any>(
@@ -129,13 +131,25 @@ export default function ModifyQuizDetails() {
         setError(null)
 
         try {
-            // Step 1: Save the modified objective to the quiz
-            await api.put(`/quizzes/${quizId}`, {
+            let referenceFileUrl: string | undefined
+            if (uploadedFile) {
+                try {
+                    referenceFileUrl = await uploadReferenceFile(uploadedFile)
+                } catch {
+                    setError("Failed to upload file. Please try again.")
+                    setIsRegenerating(false)
+                    return
+                }
+            }
+
+            const updatePayload: Record<string, unknown> = {
                 objective: promptText || null,
                 difficultyLevel: sidebarLevel || level || undefined,
                 totalMarks: sidebarTotalMarks ? parseInt(sidebarTotalMarks) : undefined,
                 timeLimit: time ? parseInt(time) : undefined,
-            })
+            }
+            if (referenceFileUrl !== undefined) updatePayload.referenceFileUrl = referenceFileUrl
+            await api.put(`/quizzes/${quizId}`, updatePayload)
 
             // Step 2: Regenerate the quiz with new objective
             await api.post(`/quizzes/${quizId}/generate`, { regenerate: true })
@@ -225,7 +239,12 @@ export default function ModifyQuizDetails() {
                 {/* Header */}
                 <div className="p-6 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
                     <h1 className="font-bold text-2xl text-[#242220]">Edit prompt</h1>
-                    <button className="p-2 hover:bg-gray-300 rounded-full transition">
+                    <button
+                        type="button"
+                        onClick={() => router.push(quizId ? `/quiz/generated?id=${quizId}` : "/quiz")}
+                        className="p-2 hover:bg-gray-200 rounded-full transition cursor-pointer"
+                        aria-label="Close"
+                    >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -275,18 +294,21 @@ export default function ModifyQuizDetails() {
                     <div className="flex flex-col gap-2 p-4 border-t border-gray-200 flex-shrink-0">
                         <div className="flex items-center justify-between gap-3">
                             <input
+                              ref={fileInputRef}
                               type="file"
                               id="file-upload-modify"
                               onChange={handleFileChange}
                               className="hidden"
                               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
                             />
-                            <label htmlFor="file-upload-modify" className="flex-1">
-                                <button className="w-full bg-[#B595FF] text-white p-3 rounded-lg font-semibold flex text-xs items-center justify-center gap-2 cursor-pointer hover:bg-[#a07fd4] transition">
-                                    <Upload className="w-4 h-4" />
-                                    Upload a File
-                                </button>
-                            </label>
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex-1 w-full bg-[#B595FF] text-white p-3 rounded-lg font-semibold flex text-xs items-center justify-center gap-2 cursor-pointer hover:bg-[#a07fd4] transition"
+                            >
+                                <Upload className="w-4 h-4" />
+                                Upload a File
+                            </button>
                             <button
                                 onClick={handleModifyAndRegenerate}
                                 disabled={isRegenerating || isLoading || !quizId}

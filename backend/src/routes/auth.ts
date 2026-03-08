@@ -24,7 +24,7 @@ router.post(
   validate(registerSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password, name, role, schoolCode, classId, location } = req.body;
+      const { email, password, name, role, schoolName, classId, location } = req.body;
 
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
@@ -35,13 +35,14 @@ router.post(
         return errorResponse(res, 'User with this email already exists', 400, 'DUPLICATE_ENTRY');
       }
 
-      // Find school by code
-      const school = await prisma.school.findUnique({
-        where: { code: schoolCode },
-      });
-
-      if (!school) {
-        return errorResponse(res, 'Invalid school code', 400, 'INVALID_SCHOOL_CODE');
+      // Resolve school for teacher/admin: create from optional schoolName
+      let school: { id: string } | null = null;
+      if (role === 'teacher' || role === 'admin') {
+        const schoolDisplayName = (schoolName?.trim() || 'Unassigned').slice(0, 255);
+        const code = `SCH-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        school = await prisma.school.create({
+          data: { name: schoolDisplayName, code },
+        });
       }
 
       // For students, validate classId
@@ -75,12 +76,12 @@ router.post(
         });
 
         // Create role-specific profile
-        if (role === 'teacher') {
+        if (role === 'teacher' && school) {
           await tx.teacher.create({
             data: {
               userId: newUser.id,
               schoolId: school.id,
-              location: location || null,
+              location: location?.trim() || null,
             },
           });
         } else if (role === 'student') {
@@ -90,7 +91,7 @@ router.post(
               classId: classId!,
             },
           });
-        } else if (role === 'admin') {
+        } else if (role === 'admin' && school) {
           await tx.admin.create({
             data: {
               userId: newUser.id,
@@ -164,9 +165,12 @@ router.post(
         );
       }
 
-      // Verify password
-      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+      // OAuth users have no password
+      if (!user.passwordHash) {
+        return unauthorizedResponse(res, 'Invalid email or password');
+      }
 
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
       if (!isPasswordValid) {
         return unauthorizedResponse(res, 'Invalid email or password');
       }
@@ -299,7 +303,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response, next: Next
           studentId: student.id,
           rollNumber: student.rollNumber,
           totalPoints: student.totalPoints,
-          class: student.class,
+          class: student.class ?? null,
           subjects: student.subjects.map((s) => s.subject),
         };
       }
@@ -410,7 +414,11 @@ router.delete(
         return errorResponse(res, 'Account is already scheduled for deletion', 400, 'ALREADY_DELETED');
       }
 
-      // Verify password
+      // OAuth users have no password
+      if (!user.passwordHash) {
+        return unauthorizedResponse(res, 'Invalid password');
+      }
+
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
       if (!isPasswordValid) {
         return unauthorizedResponse(res, 'Invalid password');

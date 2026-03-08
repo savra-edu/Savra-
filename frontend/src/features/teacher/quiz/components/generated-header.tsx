@@ -4,19 +4,16 @@ import { useState, useEffect } from "react"
 import SearchBar from "@/components/search-bar"
 import { SubjectSelect, ClassSelect } from "@/components/select-component"
 import Link from "next/link"
-import { ChevronLeft, Pencil } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ChevronLeft } from "lucide-react"
 import { useTeacherSubjects } from "@/hooks/use-subjects"
 import { useTeacherClasses } from "@/hooks/use-classes"
 
 interface GeneratedHeaderProps {
     className?: string
-    isEditMode?: boolean
-    onEditClick?: () => void
     quizTitle?: string
 }
 
-export function GeneratedHeader({ className, isEditMode = false, onEditClick, quizTitle }: GeneratedHeaderProps) {
+export function GeneratedHeader({ className, quizTitle }: GeneratedHeaderProps) {
     const { data: subjects } = useTeacherSubjects()
     const { data: classes } = useTeacherClasses()
 
@@ -46,17 +43,6 @@ export function GeneratedHeader({ className, isEditMode = false, onEditClick, qu
                     </Link>
                     <h1 className="text-base font-bold text-[#242220]">{quizTitle || "Generated Quiz"}</h1>
                 </div>
-                <Button
-                    onClick={onEditClick}
-                    className={`font-semibold px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${
-                        isEditMode
-                            ? "bg-[#DF6647] hover:bg-[#DF6647]/90 text-white"
-                            : "bg-[#9B61FF] hover:bg-[#8B51EF] text-white"
-                    }`}
-                >
-                    <Pencil className="w-4 h-4" />
-                    {isEditMode ? "Done" : "Edit"}
-                </Button>
             </div>
 
             {/* Desktop Header */}

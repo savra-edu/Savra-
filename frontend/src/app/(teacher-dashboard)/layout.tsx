@@ -50,7 +50,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const isAccountSetup = searchParams?.get("setup") === "true"
   const isAskSavraPage = pathname === "/ask-savra-page"
   const shouldHideBottomNav = isQuizDetailPage || isEditLessonPlanPage || isCreateQuizPage || isGeneratedQuizPage || isQuestionPaperPage || isModifyPromptPage || isAnnouncementsPage || isAccountSetup || isAskSavraPage
-  const shouldHideSidebar = isAskSavraPage
+  const shouldHideSidebar = isAskSavraPage || isEditLessonPlanPage
 
   return (
     <AuthGuard>

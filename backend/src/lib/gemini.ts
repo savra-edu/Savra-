@@ -2,6 +2,32 @@ import { GoogleGenerativeAI, Content, Part } from '@google/generative-ai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+const SUPPORTED_REFERENCE_MIME: Record<string, string> = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/gif': 'image/gif',
+  'image/webp': 'image/webp',
+};
+const MAX_REFERENCE_SIZE = 20 * 1024 * 1024; // 20MB
+
+/** Fetches a file from URL and converts to Gemini Part. Returns null on failure (no throw). */
+async function fetchReferenceFileAsPart(fileUrl: string): Promise<Part | null> {
+  if (!fileUrl?.startsWith('http')) return null;
+  try {
+    const res = await fetch(fileUrl);
+    if (!res.ok) return null;
+    const ct = res.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
+    if (!ct || !(ct in SUPPORTED_REFERENCE_MIME)) return null;
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength > MAX_REFERENCE_SIZE) return null;
+    const base64 = Buffer.from(buf).toString('base64');
+    return { inlineData: { mimeType: SUPPORTED_REFERENCE_MIME[ct], data: base64 } } as Part;
+  } catch {
+    return null;
+  }
+}
+
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -171,18 +197,24 @@ export const generateQuizQuestions = async (
   chapters: string[],
   numberOfQuestions: number,
   difficulty: 'easy' | 'medium' | 'hard',
-  objective?: string
+  objective?: string,
+  referenceFileUrl?: string | null
 ): Promise<
   Array<{
     questionText: string;
     options: Array<{ label: string; text: string; isCorrect: boolean }>;
   }>
 > => {
-  console.log(`[Gemini] generateQuizQuestions - Starting: subject=${subject}, chapters=${chapters.join(',')}, numQuestions=${numberOfQuestions}, difficulty=${difficulty}, hasObjective=${!!objective}`);
+  console.log(`[Gemini] generateQuizQuestions - Starting: subject=${subject}, chapters=${chapters.join(',')}, numQuestions=${numberOfQuestions}, difficulty=${difficulty}, hasObjective=${!!objective}, hasReferenceFile=${!!referenceFileUrl}`);
+
+  const fileParts: Part[] = [];
+  if (referenceFileUrl) {
+    const part = await fetchReferenceFileAsPart(referenceFileUrl);
+    if (part) fileParts.push(part);
+  }
 
   // Load assignment/assessment framework PDFs
   const assignmentDir = path.join(process.cwd(), 'public', 'assignment');
-  const fileParts: Part[] = [];
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB limit
 
   try {
@@ -331,7 +363,8 @@ export const generateLessonPlanPeriods = async (
   topic: string,
   numberOfPeriods: number,
   objective: string,
-  grade: number
+  grade: number,
+  referenceFileUrl?: string | null
 ): Promise<
   Array<{
     periodNo: number;
@@ -345,6 +378,12 @@ export const generateLessonPlanPeriods = async (
     reflection: string;
   }>
 > => {
+  const fileParts: Part[] = [];
+  if (referenceFileUrl) {
+    const part = await fetchReferenceFileAsPart(referenceFileUrl);
+    if (part) fileParts.push(part);
+  }
+
   // File paths for educational framework documents
   const fileNames = [
     'Blooms-Taxonomy.pdf',
@@ -352,9 +391,6 @@ export const generateLessonPlanPeriods = async (
     'NEP_Final_English_0.pdf',
     'The_5E_Model_of_Instruction.pdf',
   ];
-
-  // Read and convert PDF files to base64
-  const fileParts: Part[] = [];
   const publicDir = path.join(process.cwd(), 'public', 'lesson-plan');
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB limit for inline data (Gemini's limit is typically 20MB)
 
@@ -519,7 +555,8 @@ export const generateAssessment = async (
   totalMarks: number,
   difficulty: string,
   grade: number,
-  objective?: string
+  objective?: string,
+  referenceFileUrl?: string | null
 ): Promise<{
   instructions: string[];
   sections: Array<{
@@ -538,13 +575,16 @@ export const generateAssessment = async (
     .map((qt) => `${qt.count} ${qt.type} questions (${qt.marks} marks each)`)
     .join(', ');
 
-  console.log(`[Gemini] generateAssessment - Starting: subject=${subject}, chapters=${chapters.join(',')}, totalMarks=${totalMarks}, difficulty=${difficulty}, grade=${grade}, hasObjective=${!!objective}`);
+  console.log(`[Gemini] generateAssessment - Starting: subject=${subject}, chapters=${chapters.join(',')}, totalMarks=${totalMarks}, difficulty=${difficulty}, grade=${grade}, hasObjective=${!!objective}, hasReferenceFile=${!!referenceFileUrl}`);
+
+  const fileParts: Part[] = [];
+  if (referenceFileUrl) {
+    const part = await fetchReferenceFileAsPart(referenceFileUrl);
+    if (part) fileParts.push(part);
+  }
 
   // Determine class folder based on grade
   const classFolder = grade === 10 || grade === 12 ? `class-${grade}` : null;
-  
-  // Load PDFs from the appropriate class folder
-  const fileParts: Part[] = [];
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB limit
 
   if (classFolder) {
@@ -821,8 +861,12 @@ Question distribution: ${typesDescription}${objectiveText}${pdfReferenceText}
 IMPORTANT REQUIREMENTS:
 1. Number questions SEQUENTIALLY across ALL sections (1, 2, 3, 4, 5... not 1, 11, 21).
 2. For MCQ options, do NOT include letter prefixes - just the option text.
-3. You MUST use these EXACT general instructions for ${subject} (from CBSE Assessment Template):
+3. For Science/Chemistry/Physics: Write chemical formulas and equations using PLAIN ASCII digits for subscripts (e.g., HNO3, KClO3, H2O, XeF2) - do NOT use Unicode subscript characters. Always provide COMPLETE equations including all products, and COMPLETE atomic mass lists (e.g., "H=1 u, N=14 u, O=16 u") - never truncate.
+3b. For Mathematics: Write all math notation in PLAIN ASCII - use sin^-1(x) not sin⁻¹(x), x^2 not x², d2y/dx2 not d²y/dx², write "integral" for ∫, "pi" for π, <= for ≤, >= for ≥. Never truncate equations.
+4. You MUST use these EXACT general instructions for ${subject} (from CBSE Assessment Template):
 ${subjectInstructions.map((inst, i) => `   ${i + 1}. ${inst}`).join('\n')}
+
+5. Never truncate or cut off chemical equations, mathematical expressions, or data lists mid-sentence.
 
 Return a JSON object with this structure:
 {

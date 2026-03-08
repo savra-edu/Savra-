@@ -12,11 +12,11 @@ export function QuickActions() {
       href: "/lesson-plan",
     },
     {
-      title: "Create Question Paper",
+      title: "Create Assessment",
       bgColor: "bg-[#FFECEC]",
       buttonColor: "bg-[#DF6647]",
       image: "/images/question-paper.svg",
-      href: "/assessments/create",
+      href: "/assessments",
     },
     {
       title: "Analytics",

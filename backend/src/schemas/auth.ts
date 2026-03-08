@@ -1,23 +1,33 @@
 import { z } from 'zod';
 
-// Register schema
-export const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(100, 'Password must be less than 100 characters'),
-  name: z
-    .string()
-    .min(2, 'Name must be at least 2 characters')
-    .max(100, 'Name must be less than 100 characters'),
-  role: z.enum(['teacher', 'student', 'admin'], {
-    errorMap: () => ({ message: 'Role must be teacher, student, or admin' }),
-  }),
-  schoolCode: z.string().min(1, 'School code is required'),
-  classId: z.string().uuid('Invalid class ID').optional(),
-  location: z.string().max(255).optional(),
-});
+// Register schema - schoolName optional for teacher/admin; classId required for student
+export const registerSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(100, 'Password must be less than 100 characters'),
+    name: z
+      .string()
+      .min(2, 'Name must be at least 2 characters')
+      .max(100, 'Name must be less than 100 characters'),
+    role: z.enum(['teacher', 'student', 'admin'], {
+      errorMap: () => ({ message: 'Role must be teacher, student, or admin' }),
+    }),
+    schoolName: z.string().max(255).optional(),
+    classId: z.string().uuid('Invalid class ID').optional(),
+    location: z.string().max(255).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === 'student' && !data.classId) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Class selection is required for students',
+        path: ['classId'],
+      });
+    }
+  });
 
 // Login schema
 export const loginSchema = z.object({

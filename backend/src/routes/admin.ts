@@ -1986,9 +1986,9 @@ router.get(
           name: s.user.name,
           email: s.user.email,
           rollNumber: s.rollNumber,
-          class: s.class.name,
-          grade: s.class.grade,
-          section: s.class.section,
+          class: s.class?.name ?? '—',
+          grade: s.class?.grade ?? '—',
+          section: s.class?.section ?? '—',
           totalPoints: s.totalPoints,
           joinedAt: s.user.createdAt,
         }));

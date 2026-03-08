@@ -1,17 +1,22 @@
 "use client"
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+const INTENT_SIGNUP = 'signup';
 
 export default function Onboarding() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const intent = searchParams.get('intent');
+  const isSignup = intent === INTENT_SIGNUP;
 
   const handleStudentClick = () => {
-    router.push('/student/login');
+    router.push(isSignup ? '/student/signup' : '/student/login');
   };
 
   const handleTeacherClick = () => {
-    router.push('/teacher/login');
+    router.push(isSignup ? '/teacher/signup' : '/teacher/login');
   };
 
   return (

@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button"
 import { useFetch } from "@/hooks/use-api"
 import { useAuth } from "@/contexts/auth-context"
 import { downloadAssessmentPDF } from "@/lib/pdf-generator"
+import { downloadAssessmentDoc } from "@/lib/doc-generator"
+import { normalizeScientificText } from "@/lib/scientific-text"
+import { DownloadDropdown } from "@/components/download-dropdown"
+import { getAppBaseUrl } from "@/lib/app-url"
+import { EditableQuestionPaper } from "./editable-question-paper"
+import { api } from "@/lib/api"
 
 interface Question {
   number: number
@@ -59,9 +65,11 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
   const [linkCopied, setLinkCopied] = useState(false)
 
   // Fetch assessment data from API
-  const { data: assessment, isLoading } = useFetch<Assessment>(
+  const { data: assessment, isLoading, refetch } = useFetch<Assessment>(
     assessmentId ? `/assessments/${assessmentId}` : null
   )
+
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleModifyPrompt = () => {
     router.push(`/assessments/create/modify?id=${assessmentId}`)
@@ -73,47 +81,81 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
     }
   }
 
+  const handleSaveQuestionPaper = useCallback(
+    async (paper: { instructions?: string[]; sections?: unknown[]; questions?: unknown[] }) => {
+      if (!assessmentId) return
+      setIsSaving(true)
+      try {
+        await api.put(`/assessments/${assessmentId}`, { questionPaper: paper })
+        await refetch()
+        onEditClick?.(false)
+      } catch (err) {
+        console.error("Failed to save question paper:", err)
+        alert(err instanceof Error ? err.message : "Failed to save")
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [assessmentId, refetch, onEditClick]
+  )
+
   // Print handler
   const handlePrint = useCallback(() => {
     window.print()
   }, [])
 
-  // Download handler - generates and downloads PDF
-  const handleDownload = useCallback(() => {
-    if (assessment) {
-      downloadAssessmentPDF(assessment, user?.name || "")
-    }
+  const handleDownloadPDF = useCallback(() => {
+    if (assessment) downloadAssessmentPDF(assessment, user?.name || "")
   }, [assessment, user?.name])
 
-  // Share handler
-  const handleShare = useCallback(async () => {
-    const shareUrl = window.location.href
-    const shareData = {
-      title: assessment?.title || "Question Paper",
-      text: `Check out this question paper: ${assessment?.title || "Question Paper"}`,
-      url: shareUrl,
-    }
+  const handleDownloadWord = useCallback(() => {
+    if (assessment) downloadAssessmentDoc(assessment, user?.name || "")
+  }, [assessment, user?.name])
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData)
+  // Share handler - fetches public share link and shares it
+  const handleShare = useCallback(async () => {
+    if (!assessmentId) return
+    try {
+      const res = await api.post<{ success: boolean; data: { shareToken: string } }>(
+        `/assessments/${assessmentId}/share`,
+        {}
+      )
+      const shareToken = res?.data?.shareToken
+      if (!shareToken) {
+        alert("Unable to create share link. Generate a question paper first.")
         return
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          console.error("Share failed:", err)
+      }
+      const shareUrl = `${getAppBaseUrl()}/share/assessment/${shareToken}`
+      const shareData = {
+        title: assessment?.title || "Question Paper",
+        text: `Check out this question paper: ${assessment?.title || "Question Paper"}`,
+        url: shareUrl,
+      }
+
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData)
+          return
+        } catch (err) {
+          if ((err as Error).name !== "AbortError") {
+            console.error("Share failed:", err)
+          }
         }
       }
-    }
 
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2000)
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        setLinkCopied(true)
+        setTimeout(() => setLinkCopied(false), 2000)
+      } catch (err) {
+        console.error("Failed to copy link:", err)
+        alert(`Copy this link: ${shareUrl}`)
+      }
     } catch (err) {
-      console.error("Failed to copy link:", err)
-      alert(`Copy this link: ${shareUrl}`)
+      const msg = err instanceof Error ? err.message : "Failed to create share link"
+      alert(msg)
     }
-  }, [assessment?.title])
+  }, [assessmentId, assessment?.title])
 
   // Fallback questions for preview/demo mode
   const FALLBACK_QUESTIONS: Question[] = [
@@ -165,116 +207,116 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
 
       <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden min-h-0">
         {/* Desktop Header */}
-        {!isEditMode ? (
-          <div className="hidden lg:flex bg-[#E9E9E9] p-6 rounded-t-2xl items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold">SAVRA - Question Paper</h1>
-            </div>
-            <button 
-              onClick={handleEditToggle}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[#E2DFF0] rounded-lg hover:opacity-80"
-            >
-              Edit <Edit size={16} />
-            </button>
+        <div className="hidden lg:flex bg-[#E9E9E9] p-6 rounded-t-2xl items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold">SAVRA - Question Paper</h1>
+          </div>
+          <button
+            onClick={handleEditToggle}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80 ${
+              isEditMode ? "bg-[#DF6647] text-white" : "bg-[#E2DFF0]"
+            }`}
+          >
+            {isEditMode ? "Done" : "Edit"} <Edit size={16} />
+          </button>
+        </div>
+
+        {/* Content: Edit mode vs Read-only */}
+        {isEditMode ? (
+          <div className="flex-1 min-h-0 flex flex-col border border-gray-200 rounded-b-2xl overflow-hidden">
+            <EditableQuestionPaper
+              questionPaper={
+                questionPaper || {
+                  instructions,
+                  sections: [{ title: "Questions", questions }],
+                }
+              }
+              onSave={handleSaveQuestionPaper}
+              onCancel={() => onEditClick?.(false)}
+              isSaving={isSaving}
+            />
           </div>
         ) : (
-          <div className="hidden lg:flex bg-[#E9E9E9] px-12 py-6 rounded-t-2xl items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">SAVRA - Question Paper</h1>
-            </div>
-            <button
-              onClick={handleEditToggle}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[#E2DFF0] rounded-lg hover:opacity-80"
-            >
-              Edit <Edit size={16} />
-            </button>
-          </div>
-        )}
-
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 lg:py-6 border border-gray-200 rounded-b-2xl min-h-0">
-        {/* Header Section */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="space-y-1">
-            <p className="font-bold text-lg">Subject: {subject}</p>
-            <p>Class: {grade}</p>
-            <p>Chapter: {chapter}</p>
-            <p>Time: {Math.floor(duration / 60)} Hour{duration >= 120 ? 's' : ''}{duration % 60 > 0 ? ` ${duration % 60} mins` : ''}</p>
-          </div>
-          <div>
-            <p className="font-bold text-lg">Maximum Marks: {totalMarks}</p>
-          </div>
-        </div>
-
-        {/* General Instructions Section */}
-        <div className="mb-6">
-          <p className="font-bold mb-2">General Instructions:</p>
-          <ol className="list-decimal list-inside space-y-1 ml-2">
-            {instructions.map((instruction, index) => (
-              <li key={index}>{instruction}</li>
-            ))}
-          </ol>
-        </div>
-
-        {/* Questions - Render by sections if available */}
-        <div className="mb-4">
-          {questionPaper?.sections && questionPaper.sections.length > 0 ? (
-            // Render sections from API
-            questionPaper.sections.map((section, sectionIdx) => (
-              <div key={sectionIdx} className="mb-6">
-                <p className="font-bold text-lg mb-4">
-                  {section.title || section.name || `Section ${String.fromCharCode(65 + sectionIdx)}`}
-                </p>
-                {section.instructions && (
-                  <p className="text-sm text-gray-600 mb-3 italic">{section.instructions}</p>
-                )}
-                <div className="space-y-6">
-                  {section.questions.map((question, idx) => (
-                    <div key={question.number || idx} className="space-y-2">
-                      <p className="font-semibold">
-                        Question {question.number || idx + 1}: {question.text}
-                        {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
-                      </p>
-                      {question.options && question.options.length > 0 && (
-                        <div className="ml-4 space-y-1">
-                          {question.options.map((option, index) => (
-                            <p key={index}>
-                              {String.fromCharCode(97 + index)}) {option}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+          <>
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 lg:py-6 border border-gray-200 rounded-b-2xl min-h-0">
+              <div className="flex justify-between items-start mb-6">
+                <div className="space-y-1">
+                  <p className="font-bold text-lg">Subject: {subject}</p>
+                  <p>Class: {grade}</p>
+                  <p>Chapter: {chapter}</p>
+                  <p>Time: {Math.floor(duration / 60)} Hour{duration >= 120 ? "s" : ""}{duration % 60 > 0 ? ` ${duration % 60} mins` : ""}</p>
+                </div>
+                <div>
+                  <p className="font-bold text-lg">Maximum Marks: {totalMarks}</p>
                 </div>
               </div>
-            ))
-          ) : (
-            // Render flat questions without section header
-            <div className="space-y-6">
-              {questions.map((question, idx) => (
-                <div key={question.number || idx} className="space-y-2">
-                  <p className="font-semibold">
-                    Question {question.number || idx + 1}: {question.text}
-                    {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
-                  </p>
-                  {question.options && question.options.length > 0 && (
-                    <div className="ml-4 space-y-1">
-                      {question.options.map((option, index) => (
-                        <p key={index}>
-                          {String.fromCharCode(97 + index)}) {option}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
 
-        {/* Footer Actions */}
+              <div className="mb-6">
+                <p className="font-bold mb-2">General Instructions:</p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  {instructions.map((instruction, index) => (
+                    <li key={index}>{instruction}</li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="mb-4">
+                {questionPaper?.sections && questionPaper.sections.length > 0 ? (
+                  questionPaper.sections.map((section, sectionIdx) => (
+                    <div key={sectionIdx} className="mb-6">
+                      <p className="font-bold text-lg mb-4">
+                        {section.title || section.name || `Section ${String.fromCharCode(65 + sectionIdx)}`}
+                      </p>
+                      {section.instructions && (
+                        <p className="text-sm text-gray-600 mb-3 italic">{section.instructions}</p>
+                      )}
+                      <div className="space-y-6">
+                        {section.questions.map((question, idx) => (
+                          <div key={question.number || idx} className="space-y-2">
+                            <p className="font-semibold break-words">
+                              Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
+                              {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
+                            </p>
+                            {question.options && question.options.length > 0 && (
+                              <div className="ml-4 space-y-1">
+                                {question.options.map((option, index) => (
+                                  <p key={index}>
+                                    {String.fromCharCode(97 + index)}) {normalizeScientificText(option)}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="space-y-6">
+                    {questions.map((question, idx) => (
+                      <div key={question.number || idx} className="space-y-2">
+                        <p className="font-semibold break-words">
+                          Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
+                          {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
+                        </p>
+                        {question.options && question.options.length > 0 && (
+                          <div className="ml-4 space-y-1">
+                            {question.options.map((option, index) => (
+                              <p key={index}>
+                                {String.fromCharCode(97 + index)}) {normalizeScientificText(option)}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Actions */}
         <div className="flex-shrink-0 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4 px-4 py-4">
@@ -303,12 +345,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
               >
                 Modify Prompt
               </Button>
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-1 bg-[#DF6647] hover:bg-[#DF6647]/90 text-white rounded-xl font-semibold"
-              >
-                <Download size={18} /> Download
-              </button>
+              <DownloadDropdown
+                onDownloadPDF={handleDownloadPDF}
+                onDownloadWord={handleDownloadWord}
+                label="Download"
+                className="flex-1 bg-[#DF6647] hover:bg-[#DF6647]/90 text-white border-0"
+              />
             </div>
           </div>
 
@@ -322,12 +364,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                 {linkCopied ? <Check size={18} /> : <Share2 size={18} />}
                 {linkCopied ? "Copied!" : "Share"}
               </button>
-              <button
-                onClick={handleDownload}
-                className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
-              >
-                <Download size={18} /> Download
-              </button>
+              <DownloadDropdown
+                onDownloadPDF={handleDownloadPDF}
+                onDownloadWord={handleDownloadWord}
+                label="Download"
+                className="bg-[#E2DFF0] border-0 text-gray-700 hover:bg-[#D5D2E3]"
+              />
               <button
                 onClick={handlePrint}
                 className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
@@ -346,6 +388,8 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   )

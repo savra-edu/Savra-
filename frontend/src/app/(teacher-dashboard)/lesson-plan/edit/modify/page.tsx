@@ -1,8 +1,8 @@
 "use client"
 
 import { Suspense } from "react"
-import ModifyDetails from "@/features/teacher/lesson-plan/components/modify-details";
-import { ModifyHeader } from "@/features/teacher/lesson-plan/components/modify-header";
+import ModifyDetails from "@/features/teacher/lesson-plan/components/modify-details"
+import { ModifyHeader } from "@/features/teacher/lesson-plan/components/modify-header"
 
 function ModifyPageContent() {
     return (

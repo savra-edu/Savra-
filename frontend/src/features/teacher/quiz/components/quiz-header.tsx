@@ -77,7 +77,10 @@ export function QuizHeader({
             </div>
 
             {/* Desktop Header */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:flex items-center gap-4">
+                <Link href="/assessments">
+                    <ChevronLeft className="w-12 h-12 text-black rounded-full p-4 bg-[#F5F5F5] cursor-pointer hover:bg-[#E5E5E5] transition-colors" />
+                </Link>
                 <h1 className="text-3xl font-bold text-[#242220]">Create a Quiz</h1>
             </div>
             <div className="hidden lg:flex items-center gap-4">

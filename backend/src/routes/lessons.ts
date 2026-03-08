@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import prisma, { withRetry } from '../lib/prisma';
 import { authMiddleware, authorize } from '../middleware/auth';
 import { validate, validateQuery } from '../middleware/validate';
@@ -251,6 +252,46 @@ router.get(
           totalPages: Math.ceil(total / limit),
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/lessons/:id/share - Get or create share link for lesson plan
+router.post(
+  '/:id/share',
+  authMiddleware,
+  authorize('teacher'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.id;
+      const lessonId = req.params.id as string;
+
+      const teacherId = await getTeacherId(userId);
+      if (!teacherId) {
+        return notFoundResponse(res, 'Teacher profile not found');
+      }
+
+      const lesson = await prisma.lesson.findFirst({
+        where: { id: lessonId, teacherId },
+        select: { id: true, shareToken: true },
+      });
+
+      if (!lesson) {
+        return notFoundResponse(res, 'Lesson not found');
+      }
+
+      let shareToken = lesson.shareToken;
+      if (!shareToken) {
+        shareToken = crypto.randomBytes(16).toString('base64url');
+        await prisma.lesson.update({
+          where: { id: lessonId },
+          data: { shareToken },
+        });
+      }
+
+      return successResponse(res, { shareToken });
     } catch (error) {
       next(error);
     }
@@ -604,7 +645,8 @@ router.post(
           topic,
           numberOfPeriods,
           objective,
-          grade
+          grade,
+          lesson.referenceFileUrl ?? undefined
         );
       } catch (aiError) {
         console.error('Gemini AI generation error:', aiError);
