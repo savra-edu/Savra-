@@ -226,7 +226,7 @@ export function generateAndDisplayLessonPlanPDF(lesson: Lesson, teacherName: str
 }
 
 // Generate Quiz PDF
-export function generateQuizPDF(quiz: Quiz, teacherName: string): { url: string; filename: string } {
+export function generateQuizPDF(quiz: Quiz, teacherName: string, includeAnswerKey = false): { url: string; filename: string } {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -357,10 +357,45 @@ export function generateQuizPDF(quiz: Quiz, teacherName: string): { url: string;
     doc.text("No questions available.", margin, yPos)
   }
 
+  if (includeAnswerKey && quiz.questions && quiz.questions.length > 0) {
+    doc.addPage()
+    yPos = 15
+
+    doc.setFontSize(14)
+    doc.setFont("helvetica", "bold")
+    doc.text("Answer Key", pageWidth / 2, yPos, { align: "center" })
+    yPos += 10
+
+    doc.setDrawColor(150, 150, 150)
+    doc.line(margin, yPos, pageWidth - margin, yPos)
+    yPos += 8
+
+    doc.setFontSize(10)
+    for (let i = 0; i < quiz.questions.length; i++) {
+      const question = quiz.questions[i]
+      if (yPos > 275) {
+        doc.addPage()
+        yPos = 15
+      }
+
+      const correctOpt = question.options?.find(o => o.isCorrect)
+      const answerText = correctOpt
+        ? `(${correctOpt.optionLabel}) ${correctOpt.optionText}`
+        : "N/A"
+
+      doc.setFont("helvetica", "bold")
+      doc.text(`Q${i + 1}.`, margin, yPos)
+      doc.setFont("helvetica", "normal")
+      const lines = doc.splitTextToSize(answerText, contentWidth - 20)
+      doc.text(lines, margin + 10, yPos)
+      yPos += lines.length * 5 + 3
+    }
+  }
+
   // Generate filename
   const subjectName = quiz.subject?.name || "Quiz"
   const grade = quiz.class?.grade || ""
-  const filename = `Quiz-${subjectName}-Grade${grade}.pdf`
+  const filename = `Quiz-${subjectName}-Grade${grade}${includeAnswerKey ? "-AnswerKey" : ""}.pdf`
 
   // Return blob URL for download
   const pdfBlob = doc.output("blob")
@@ -385,6 +420,17 @@ export function downloadQuizPDF(quiz: Quiz, teacherName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 
+export function downloadQuizAnswerKeyPDF(quiz: Quiz, teacherName: string): void {
+  const { url, filename } = generateQuizPDF(quiz, teacherName, true)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
+}
+
 // Assessment/Question Paper types
 interface AssessmentQuestion {
   number: number
@@ -392,6 +438,7 @@ interface AssessmentQuestion {
   options?: string[]
   type?: string
   marks?: number
+  answer?: string
 }
 
 interface AssessmentSection {
@@ -420,7 +467,7 @@ interface Assessment {
 }
 
 // Generate Assessment/Question Paper PDF
-export function generateAssessmentPDF(assessment: Assessment, teacherName: string): { url: string; filename: string } {
+export function generateAssessmentPDF(assessment: Assessment, teacherName: string, includeAnswerKey = false): { url: string; filename: string } {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -628,10 +675,47 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
     }
   }
 
+  if (includeAnswerKey) {
+    const allQuestions = questionPaper?.sections
+      ? questionPaper.sections.flatMap(s => s.questions)
+      : questions
+
+    if (allQuestions.length > 0) {
+      doc.addPage()
+      yPos = 15
+
+      doc.setFontSize(14)
+      doc.setFont("helvetica", "bold")
+      doc.text("Answer Key", pageWidth / 2, yPos, { align: "center" })
+      yPos += 10
+
+      doc.setDrawColor(150, 150, 150)
+      doc.line(margin, yPos, pageWidth - margin, yPos)
+      yPos += 8
+
+      doc.setFontSize(10)
+      for (const question of allQuestions) {
+        if (yPos > 270) {
+          doc.addPage()
+          yPos = 15
+        }
+
+        const answerText = normalizeScientificText(question.answer || "N/A")
+
+        doc.setFont("helvetica", "bold")
+        doc.text(`Q${question.number || 1}.`, margin, yPos)
+        doc.setFont("helvetica", "normal")
+        const lines = doc.splitTextToSize(answerText, contentWidth - 20)
+        doc.text(lines, margin + 10, yPos)
+        yPos += lines.length * 5 + 3
+      }
+    }
+  }
+
   // Generate filename
   const subjectName = assessment.subject?.name || "QuestionPaper"
   const gradeNum = assessment.class?.grade || ""
-  const filename = `QuestionPaper-${subjectName}-Grade${gradeNum}.pdf`
+  const filename = `QuestionPaper-${subjectName}-Grade${gradeNum}${includeAnswerKey ? "-AnswerKey" : ""}.pdf`
 
   const pdfBlob = doc.output("blob")
   const pdfUrl = URL.createObjectURL(pdfBlob)
@@ -650,5 +734,16 @@ export function downloadAssessmentPDF(assessment: Assessment, teacherName: strin
   link.click()
   document.body.removeChild(link)
 
+  setTimeout(() => URL.revokeObjectURL(url), 100)
+}
+
+export function downloadAssessmentAnswerKeyPDF(assessment: Assessment, teacherName: string): void {
+  const { url, filename } = generateAssessmentPDF(assessment, teacherName, true)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
   setTimeout(() => URL.revokeObjectURL(url), 100)
 }

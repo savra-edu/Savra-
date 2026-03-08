@@ -191,7 +191,7 @@ interface QuizForDoc {
   }>
 }
 
-export function downloadQuizDoc(quiz: QuizForDoc, _teacherName: string): void {
+export function downloadQuizDoc(quiz: QuizForDoc, _teacherName: string, includeAnswerKey = false): void {
   const subject = quiz.subject?.name || "Quiz"
   const grade = quiz.class ? `${quiz.class.grade}${quiz.class.section}` : ""
   const questions = quiz.questions || []
@@ -216,6 +216,20 @@ export function downloadQuizDoc(quiz: QuizForDoc, _teacherName: string): void {
     )
     .join("")
 
+  let answerKeyHtml = ""
+  if (includeAnswerKey && questions.length > 0) {
+    const answerItems = questions
+      .map((q, i) => {
+        const correctOpt = q.options?.find((o) => (o as any).isCorrect)
+        const answerText = correctOpt
+          ? `${correctOpt.optionLabel}. ${escapeHtml(correctOpt.optionText)}`
+          : "N/A"
+        return `<p><strong>Q${i + 1}.</strong> ${answerText}</p>`
+      })
+      .join("")
+    answerKeyHtml = `<hr/><h3>Answer Key</h3>${answerItems}`
+  }
+
   const html = `
     <h2>${escapeHtml(quiz.title || "Quiz")}</h2>
     <p><strong>Subject:</strong> ${escapeHtml(subject)} | <strong>Class:</strong> ${grade} | <strong>Topics:</strong> ${escapeHtml(topics)}</p>
@@ -230,8 +244,10 @@ export function downloadQuizDoc(quiz: QuizForDoc, _teacherName: string): void {
     <hr/>
     <h3>Questions</h3>
     ${questionsHtml}
+    ${answerKeyHtml}
   `
-  triggerDownload(html, `Quiz-${subject}-Grade${grade}.doc`)
+  const suffix = includeAnswerKey ? "-AnswerKey" : ""
+  triggerDownload(html, `Quiz-${subject}-Grade${grade}${suffix}.doc`)
 }
 
 interface AssessmentForDoc {
@@ -246,13 +262,13 @@ interface AssessmentForDoc {
       title?: string
       name?: string
       instructions?: string
-      questions: Array<{ number?: number; text: string; options?: string[]; marks?: number }>
+      questions: Array<{ number?: number; text: string; options?: string[]; marks?: number; answer?: string }>
     }>
-    questions?: Array<{ number?: number; text: string; options?: string[]; marks?: number }>
+    questions?: Array<{ number?: number; text: string; options?: string[]; marks?: number; answer?: string }>
   } | null
 }
 
-export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName: string): void {
+export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName: string, includeAnswerKey = false): void {
   const subject = assessment.subject?.name || "QuestionPaper"
   const grade = assessment.class ? `${assessment.class.grade}-${assessment.class.section}` : ""
   const chapter = assessment.chapters?.map((c) => c.name).join(", ") || ""
@@ -293,6 +309,22 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
       .join("")
   }
 
+  let answerKeyHtml = ""
+  if (includeAnswerKey) {
+    const allQuestions = sections
+      ? sections.flatMap((s) => s.questions || [])
+      : flatQuestions
+    if (allQuestions.length > 0) {
+      const answerItems = allQuestions
+        .map(
+          (q, i) =>
+            `<p><strong>Q${q.number ?? i + 1}.</strong> ${escapeHtml(normalizeScientificText(q.answer || "N/A"))}</p>`
+        )
+        .join("")
+      answerKeyHtml = `<hr/><h3>Answer Key</h3>${answerItems}`
+    }
+  }
+
   const html = `
     <h2>SAVRA - Question Paper</h2>
     <p><strong>Subject:</strong> ${escapeHtml(subject)} | <strong>Class:</strong> ${grade} | <strong>Chapter:</strong> ${escapeHtml(chapter)}</p>
@@ -301,6 +333,16 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
     <ol>${instructions.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ol>
     <hr/>
     ${questionsHtml}
+    ${answerKeyHtml}
   `
-  triggerDownload(html, `QuestionPaper-${subject}-Grade${grade}.doc`)
+  const suffix = includeAnswerKey ? "-AnswerKey" : ""
+  triggerDownload(html, `QuestionPaper-${subject}-Grade${grade}${suffix}.doc`)
+}
+
+export function downloadQuizAnswerKeyDoc(quiz: QuizForDoc, teacherName: string): void {
+  downloadQuizDoc(quiz, teacherName, true)
+}
+
+export function downloadAssessmentAnswerKeyDoc(assessment: AssessmentForDoc, teacherName: string): void {
+  downloadAssessmentDoc(assessment, teacherName, true)
 }

@@ -38,6 +38,7 @@ interface Assessment {
 interface QuestionPaperFormProps {
   selectedClassId: string
   selectedSubjectId: string
+  selectedGrade?: number | null
 }
 
 const QUESTION_TYPE_DISPLAY_NAMES: Record<string, string> = {
@@ -50,11 +51,11 @@ const QUESTION_TYPE_DISPLAY_NAMES: Record<string, string> = {
   diagram_based: "Diagram Based",
 }
 
-export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }: QuestionPaperFormProps) {
+export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, selectedGrade }: QuestionPaperFormProps) {
   const router = useRouter()
 
-  // Chapters - load based on selected subject
-  const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined)
+  // Chapters - load based on subject + grade (grade-specific CBSE/NCERT chapters)
+  const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
   const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
   const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false)
   const chapterDropdownRef = useRef<HTMLDivElement>(null)
@@ -74,10 +75,10 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
     { name: "case_study", numQuestions: "0", marksPerQuestion: "4" },
   ])
 
-  // Reset chapters when subject changes
+  // Reset chapters when subject or grade changes (different chapter sets)
   useEffect(() => {
     setSelectedChapterIds([])
-  }, [selectedSubjectId])
+  }, [selectedSubjectId, selectedGrade])
 
   // Close chapter dropdown on outside click
   useEffect(() => {

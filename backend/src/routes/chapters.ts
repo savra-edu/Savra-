@@ -4,12 +4,15 @@ import { successResponse } from '../utils/response';
 
 const router = Router();
 
-// GET /api/chapters - List all chapters (optionally filtered by subject)
+// GET /api/chapters - List chapters filtered by subject and optionally grade
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { subject: subjectId } = req.query;
+    const { subject: subjectId, grade: gradeParam } = req.query;
 
-    const where = subjectId ? { subjectId: subjectId as string } : {};
+    const where: { subjectId?: string; grade?: number } = {};
+    if (subjectId) where.subjectId = subjectId as string;
+    const gradeNum = gradeParam != null ? parseInt(String(gradeParam), 10) : NaN;
+    if (!isNaN(gradeNum) && gradeNum > 0) where.grade = gradeNum;
 
     const chapters = await prisma.chapter.findMany({
       where,

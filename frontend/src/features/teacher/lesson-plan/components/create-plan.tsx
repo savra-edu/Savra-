@@ -58,8 +58,9 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
     const selectedClassObj = parseClassFromHeader(selectedClass)
     const selectedClassId = selectedClassObj?.id || ""
 
-    // Chapters - load based on selected subject
-    const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined)
+    // Chapters - load based on subject + grade (grade-specific CBSE/NCERT chapters)
+    const selectedGrade = selectedClassObj?.grade ?? null
+    const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
     const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
 
     const [duration, setDuration] = useState<string>("")
@@ -101,10 +102,10 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
         }
     }, [duration])
 
-    // Reset chapters when subject changes
+    // Reset chapters when subject or grade changes (different chapter sets)
     useEffect(() => {
         setSelectedChapterIds([])
-    }, [selectedSubjectId])
+    }, [selectedSubjectId, selectedGrade])
 
     const isFormValid = useMemo(() => {
         return selectedClassId !== "" &&

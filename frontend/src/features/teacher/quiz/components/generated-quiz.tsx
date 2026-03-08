@@ -8,8 +8,8 @@ import PublishDialog from "./publish-dialog"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
-import { downloadQuizPDF } from "@/lib/pdf-generator"
-import { downloadQuizDoc } from "@/lib/doc-generator"
+import { downloadQuizPDF, downloadQuizAnswerKeyPDF } from "@/lib/pdf-generator"
+import { downloadQuizDoc, downloadQuizAnswerKeyDoc } from "@/lib/doc-generator"
 import { DownloadDropdown } from "@/components/download-dropdown"
 import { Quiz as QuizType } from "@/types/api"
 import { EditableQuiz } from "./editable-quiz"
@@ -212,6 +212,38 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
     downloadQuizDoc(forDoc, user?.name || "Teacher")
   }, [buildQuizForExport, user])
 
+  const handleAnswerKeyPDF = useCallback(() => {
+    const quizForPdf = buildQuizForExport()
+    if (!quizForPdf) return
+    downloadQuizAnswerKeyPDF(quizForPdf, user?.name || "Teacher")
+  }, [buildQuizForExport, user])
+
+  const handleAnswerKeyWord = useCallback(() => {
+    const q = buildQuizForExport()
+    if (!q) return
+    const forDoc = {
+      id: q.id,
+      title: q.title,
+      subject: q.subject,
+      class: q.class,
+      chapters: q.chapters,
+      timeLimit: q.timeLimit,
+      totalQuestions: q.totalQuestions,
+      totalMarks: q.totalMarks,
+      questions: q.questions?.map((qn) => ({
+        questionText: qn.questionText,
+        questionType: qn.questionType,
+        marks: qn.marks,
+        options: qn.options?.map((o) => ({
+          optionLabel: o.optionLabel,
+          optionText: o.optionText,
+          isCorrect: o.isCorrect,
+        })),
+      })),
+    }
+    downloadQuizAnswerKeyDoc(forDoc, user?.name || "Teacher")
+  }, [buildQuizForExport, user])
+
   // Handle share - fetches public share link and shares it
   const handleShare = useCallback(async () => {
     if (!quizId) return
@@ -398,8 +430,8 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
         <div className="flex-shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4">
-            {/* First Row: Print, Save draft, Share */}
-            <div className="flex justify-start items-center gap-3">
+            {/* First Row: Print, Save draft, Share, Answer Key */}
+            <div className="flex justify-start items-center gap-3 flex-wrap">
               <button
                 onClick={handlePrint}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm"
@@ -420,6 +452,12 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
                 {linkCopied ? <Check size={18} /> : <Share2 size={18} />}
                 {linkCopied ? "Copied!" : "Share"}
               </button>
+              <DownloadDropdown
+                onDownloadPDF={handleAnswerKeyPDF}
+                onDownloadWord={handleAnswerKeyWord}
+                label="Answer Key"
+                className="bg-[#B595FF] hover:bg-[#A085EF] text-white border-0 rounded-xl font-semibold text-sm"
+              />
             </div>
             {/* Second Row: Modify Prompt and Download */}
             <div className="flex gap-3">
@@ -469,6 +507,12 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
               >
                 <FileText size={18} /> {isSaving ? "Saving..." : "Draft"}
               </button>
+              <DownloadDropdown
+                onDownloadPDF={handleAnswerKeyPDF}
+                onDownloadWord={handleAnswerKeyWord}
+                label="Answer Key"
+                className="bg-[#E2DFF0] border-0 text-gray-700 hover:bg-[#D5D2E3]"
+              />
             </div>
 
             <div className="flex items-center gap-1">
