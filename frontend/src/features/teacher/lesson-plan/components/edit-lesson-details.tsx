@@ -60,8 +60,14 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
   }, [lesson])
 
 
-  // Auto-generate periods when numberOfPeriods changes
+  // Auto-generate periods when numberOfPeriods changes (only when we need placeholders)
+  // Do NOT overwrite periods that were just loaded from the API — avoids race where
+  // this effect replaces fetched content with empty placeholders (especially on prod)
   useEffect(() => {
+    const apiPeriods = lesson?.periods || []
+    if (apiPeriods.length >= numberOfPeriods && apiPeriods.some((p) => p.concept || p.learningOutcomes)) {
+      return // API already provided periods with content — don't overwrite
+    }
     if (numberOfPeriods > 0 && periods.length < numberOfPeriods) {
       const newPeriods: LessonPeriod[] = [...periods]
       for (let i = periods.length + 1; i <= numberOfPeriods; i++) {
@@ -75,7 +81,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
     } else if (numberOfPeriods < periods.length) {
       setPeriods(periods.slice(0, numberOfPeriods))
     }
-  }, [numberOfPeriods])
+  }, [numberOfPeriods, lesson?.periods])
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({
