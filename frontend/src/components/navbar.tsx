@@ -97,10 +97,10 @@ export function Navbar() {
 
         {/* Desktop Right Side */}
         <div className="hidden lg:flex items-center gap-2 md:gap-4">
-          <Link href="/onboarding" className="text-[#333333] text-xs md:text-sm font-medium transition hover:opacity-80 cursor-pointer">
+          <Link href="/onboarding?intent=login" className="text-[#333333] text-xs md:text-sm font-medium transition hover:opacity-80 cursor-pointer">
             Log In
           </Link>
-          <Link href="/onboarding">
+          <Link href="/onboarding?intent=signup">
             <Button className="bg-[#333333] text-white rounded-lg px-4 md:px-6 py-1.5 md:py-2 text-xs md:text-sm font-medium">
               Sign Up
             </Button>
@@ -253,14 +253,14 @@ export function Navbar() {
 
             <div className="pt-4 space-y-3 border-t border-gray-100">
               <Link 
-                href="/onboarding"
+                href="/onboarding?intent=login"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block text-[#333333] text-base font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Log In
               </Link>
               <Link 
-                href="/onboarding"
+                href="/onboarding?intent=signup"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block"
               >

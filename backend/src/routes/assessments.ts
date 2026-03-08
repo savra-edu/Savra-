@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { authMiddleware, authorize } from '../middleware/auth';
 import { validate, validateQuery } from '../middleware/validate';
@@ -332,6 +333,7 @@ router.put(
         questionTypes,
         referenceBooks,
         referenceFileUrl,
+        questionPaper,
       } = req.body;
 
       // Get teacher ID
@@ -356,6 +358,7 @@ router.put(
         difficultyLevel?: DifficultyLevel;
         referenceBooks?: string[];
         referenceFileUrl?: string | null;
+        questionPaper?: object;
       } = {};
 
       if (classId !== undefined) updateData.classId = classId;
@@ -366,6 +369,7 @@ router.put(
       if (difficultyLevel !== undefined) updateData.difficultyLevel = difficultyLevel as DifficultyLevel;
       if (referenceBooks !== undefined) updateData.referenceBooks = referenceBooks;
       if (referenceFileUrl !== undefined) updateData.referenceFileUrl = referenceFileUrl;
+      if (questionPaper !== undefined) updateData.questionPaper = questionPaper as object;
 
       // Update assessment in transaction
       const updatedAssessment = await prisma.$transaction(async (tx) => {
@@ -492,6 +496,50 @@ router.delete(
   }
 );
 
+// POST /api/assessments/:id/share - Get or create share link for question paper
+router.post(
+  '/:id/share',
+  authMiddleware,
+  authorize('teacher'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.id;
+      const assessmentId = req.params.id as string;
+
+      const teacherId = await getTeacherId(userId);
+      if (!teacherId) {
+        return notFoundResponse(res, 'Teacher profile not found');
+      }
+
+      const assessment = await prisma.assessment.findFirst({
+        where: { id: assessmentId, teacherId },
+        select: { id: true, shareToken: true, questionPaper: true },
+      });
+
+      if (!assessment) {
+        return notFoundResponse(res, 'Assessment not found');
+      }
+
+      if (!assessment.questionPaper) {
+        return errorResponse(res, 'Generate a question paper before sharing', 400, 'NO_PAPER');
+      }
+
+      let shareToken = assessment.shareToken;
+      if (!shareToken) {
+        shareToken = crypto.randomBytes(16).toString('base64url');
+        await prisma.assessment.update({
+          where: { id: assessmentId },
+          data: { shareToken },
+        });
+      }
+
+      return successResponse(res, { shareToken });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // POST /api/assessments/:id/generate - Generate AI question paper
 router.post(
   '/:id/generate',
@@ -563,7 +611,8 @@ router.post(
           totalMarks,
           difficultyLevel,
           grade,
-          assessmentObjective
+          assessmentObjective,
+          assessment.referenceFileUrl ?? undefined
         );
       } catch (aiError) {
         console.error('Gemini AI generation error:', aiError);

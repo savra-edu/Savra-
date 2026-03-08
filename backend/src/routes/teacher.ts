@@ -369,7 +369,8 @@ const getTeacher = async (userId: string) => {
 };
 
 // Helper to verify teacher is assigned to a class
-const verifyTeacherClass = async (teacherId: string, classId: string) => {
+const verifyTeacherClass = async (teacherId: string, classId: string | null) => {
+  if (!classId) return false;
   const assignment = await prisma.teacherClass.findUnique({
     where: {
       teacherId_classId: { teacherId, classId },

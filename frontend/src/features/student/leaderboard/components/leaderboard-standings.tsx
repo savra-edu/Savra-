@@ -73,9 +73,11 @@ export default function LeaderboardStandings({ searchQuery = "" }: LeaderboardSt
   const otherStudents = filteredRankings.slice(3)
 
   // Get class display string
-  const classDisplay = leaderboardData?.class
-    ? `Grade: ${leaderboardData.class.grade}${leaderboardData.class.section ? `-${leaderboardData.class.section}` : ""}`
-    : "Loading..."
+  const classDisplay = !leaderboardData
+    ? "Loading..."
+    : leaderboardData.class
+      ? `Grade: ${leaderboardData.class.grade}${leaderboardData.class.section ? `-${leaderboardData.class.section}` : ""}`
+      : "No class assigned"
 
   // Loading state
   if (isLoading) {

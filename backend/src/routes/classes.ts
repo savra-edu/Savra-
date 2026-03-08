@@ -5,32 +5,31 @@ import { successResponse, notFoundResponse } from '../utils/response';
 
 const router = Router();
 
-// GET /api/classes/by-school-code - Public endpoint for registration
-router.get('/by-school-code', async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/classes/by-school-name - Public endpoint for student registration
+router.get('/by-school-name', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { schoolCode } = req.query;
+    const { schoolName } = req.query;
 
-    if (!schoolCode) {
+    if (!schoolName || typeof schoolName !== 'string' || schoolName.trim().length < 2) {
       return res.status(400).json({
         success: false,
-        error: { message: 'School code is required', code: 'VALIDATION_ERROR' },
+        error: { message: 'School name is required (min 2 characters)', code: 'VALIDATION_ERROR' },
       });
     }
 
-    // Find school by code
-    const school = await prisma.school.findUnique({
-      where: { code: schoolCode as string },
+    const query = schoolName.trim();
+    const school = await prisma.school.findFirst({
+      where: { name: { contains: query, mode: 'insensitive' } },
       select: { id: true, name: true },
     });
 
     if (!school) {
-      return res.status(404).json({
-        success: false,
-        error: { message: 'School not found', code: 'NOT_FOUND' },
+      return successResponse(res, {
+        school: null,
+        classes: [],
       });
     }
 
-    // Get all classes for this school
     const classes = await prisma.class.findMany({
       where: { schoolId: school.id },
       select: {
@@ -115,6 +114,9 @@ router.get('/', authMiddleware, async (req: Request, res: Response, next: NextFu
         return notFoundResponse(res, 'Student profile not found');
       }
 
+      if (!student.classId) {
+        return res.json({ success: true, data: [] });
+      }
       whereClause.id = student.classId;
     } else if (role === 'admin') {
       // Get all classes in admin's school

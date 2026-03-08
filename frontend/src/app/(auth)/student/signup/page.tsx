@@ -23,41 +23,44 @@ export default function StudentSignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [schoolCode, setSchoolCode] = useState("")
+  const [schoolName, setSchoolName] = useState("")
   const [classId, setClassId] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [classes, setClasses] = useState<ClassOption[]>([])
-  const [schoolName, setSchoolName] = useState("")
+  const [resolvedSchoolName, setResolvedSchoolName] = useState("")
   const [isLoadingClasses, setIsLoadingClasses] = useState(false)
   const { register } = useAuth()
 
-  // Fetch classes when school code changes
+  // Fetch classes when school name changes
   useEffect(() => {
+    setClassId("")
     const fetchClasses = async () => {
-      if (!schoolCode || schoolCode.length < 3) {
+      if (!schoolName || schoolName.trim().length < 2) {
         setClasses([])
-        setSchoolName("")
+        setResolvedSchoolName("")
         return
       }
 
       setIsLoadingClasses(true)
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/classes/by-school-code?schoolCode=${schoolCode}`)
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/classes/by-school-name?schoolName=${encodeURIComponent(schoolName.trim())}`
+        )
         const data = await response.json()
 
         if (data.success && data.data) {
           setClasses(data.data.classes || [])
-          setSchoolName(data.data.school?.name || "")
+          setResolvedSchoolName(data.data.school?.name || "")
         } else {
           setClasses([])
-          setSchoolName("")
+          setResolvedSchoolName("")
         }
       } catch {
         setClasses([])
-        setSchoolName("")
+        setResolvedSchoolName("")
       } finally {
         setIsLoadingClasses(false)
       }
@@ -65,13 +68,13 @@ export default function StudentSignupPage() {
 
     const debounce = setTimeout(fetchClasses, 500)
     return () => clearTimeout(debounce)
-  }, [schoolCode])
+  }, [schoolName])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    if (!name || !email || !password || !confirmPassword || !schoolCode || !classId) {
+    if (!name || !email || !password || !confirmPassword || !classId) {
       setError("Please fill in all required fields")
       return
     }
@@ -93,7 +96,6 @@ export default function StudentSignupPage() {
         email,
         password,
         role: "student",
-        schoolCode,
         classId,
       })
     } catch (err) {
@@ -158,16 +160,16 @@ export default function StudentSignupPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#242220] mb-2">School Code *</label>
+            <label className="block text-sm font-medium text-[#242220] mb-2">School Name *</label>
             <input
               type="text"
-              placeholder="Enter school code"
-              value={schoolCode}
-              onChange={(e) => setSchoolCode(e.target.value)}
+              placeholder="Enter your school name"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
               className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
             />
-            {schoolName && (
-              <p className="text-sm text-green-600 mt-1">{schoolName}</p>
+            {resolvedSchoolName && (
+              <p className="text-sm text-green-600 mt-1">{resolvedSchoolName}</p>
             )}
           </div>
 
@@ -180,7 +182,7 @@ export default function StudentSignupPage() {
               className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 text-[#242220] disabled:bg-gray-100"
             >
               <option value="">
-                {isLoadingClasses ? "Loading classes..." : classes.length === 0 ? "Enter school code first" : "Select your class"}
+                {isLoadingClasses ? "Loading classes..." : classes.length === 0 ? "Enter school name first" : "Select your class"}
               </option>
               {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
@@ -301,16 +303,16 @@ export default function StudentSignupPage() {
 
           <div className="flex gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#242220] mb-2">School Code *</label>
+              <label className="block text-sm font-medium text-[#242220] mb-2">School Name *</label>
               <input
                 type="text"
-                placeholder="Enter school code"
-                value={schoolCode}
-                onChange={(e) => setSchoolCode(e.target.value)}
+                placeholder="Enter your school name"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
                 className="px-4 w-[192px] py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
               />
-              {schoolName && (
-                <p className="text-sm text-green-600 mt-1">{schoolName}</p>
+              {resolvedSchoolName && (
+                <p className="text-sm text-green-600 mt-1">{resolvedSchoolName}</p>
               )}
             </div>
             <div>
@@ -322,7 +324,7 @@ export default function StudentSignupPage() {
                 className="px-4 w-[192px] py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 text-[#242220] disabled:bg-gray-100"
               >
                 <option value="">
-                  {isLoadingClasses ? "Loading..." : classes.length === 0 ? "Enter code" : "Select class"}
+                  {isLoadingClasses ? "Loading..." : classes.length === 0 ? "Enter school name" : "Select class"}
                 </option>
                 {classes.map((cls) => (
                   <option key={cls.id} value={cls.id}>

@@ -2,13 +2,17 @@
 
 import { useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Share2, Download, Printer, FileText, AlignLeft, AlignCenter, AlignRight, List, Minus, Plus, Check } from "lucide-react"
+import { Share2, Download, Printer, FileText, Edit, Check } from "lucide-react"
+import { getAppBaseUrl } from "@/lib/app-url"
 import PublishDialog from "./publish-dialog"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { downloadQuizPDF } from "@/lib/pdf-generator"
+import { downloadQuizDoc } from "@/lib/doc-generator"
+import { DownloadDropdown } from "@/components/download-dropdown"
 import { Quiz as QuizType } from "@/types/api"
+import { EditableQuiz } from "./editable-quiz"
 
 interface Question {
   id: string
@@ -34,12 +38,11 @@ interface Quiz {
 }
 
 interface GeneratedQuizProps {
-  isEditMode?: boolean
   quiz?: Quiz | null
   onSave?: () => void
 }
 
-export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: GeneratedQuizProps) {
+export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const quizId = searchParams.get("id")
@@ -47,6 +50,7 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
 
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string[] }>({})
 
@@ -67,6 +71,41 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
   const handleModifyPrompt = () => {
     router.push(`/quiz/generated/modify?id=${quizId}`)
   }
+
+  const handleEditToggle = () => setIsEditMode((prev) => !prev)
+
+  const handleSaveQuiz = useCallback(
+    async (editableQuestions: { id: string; text: string; options: string[]; correctAnswerIndex: number }[]) => {
+      if (!quizId) return
+      setIsSaving(true)
+      setSaveError(null)
+      try {
+        for (const q of editableQuestions) {
+          const options = (q.options || []).map((text, i) => ({
+            label: String.fromCharCode(65 + i),
+            text: text.trim(),
+            isCorrect: i === q.correctAnswerIndex,
+          }))
+          if (options.length < 2) continue
+          const correctCount = options.filter((o) => o.isCorrect).length
+          if (correctCount !== 1) continue
+          await api.put(`/quizzes/${quizId}/questions/${q.id}`, {
+            questionText: q.text.trim(),
+            questionType: "mcq",
+            marks: 1,
+            options,
+          })
+        }
+        await onSave?.()
+        setIsEditMode(false)
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : "Failed to save quiz")
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [quizId, onSave]
+  )
 
   const handleSaveDraft = async () => {
     if (!quizId) return
@@ -89,12 +128,10 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
     window.print()
   }, [])
 
-  // Handle download - generates and downloads PDF directly
-  const handleDownload = useCallback(() => {
-    if (!quiz) return
-
-    // Convert local Quiz interface to QuizType for PDF generator
-    const quizForPdf: QuizType = {
+  // Build quiz structure for PDF/Word (shared conversion)
+  const buildQuizForExport = useCallback((): QuizType | null => {
+    if (!quiz) return null
+    return {
       id: quiz.id,
       teacherId: "",
       classId: "",
@@ -144,45 +181,81 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
           isCorrect: typeof opt === 'string' ? opt === q.correctAnswer : (opt as any).isCorrect || false
         }))
       }))
+    } as QuizType
+  }, [quiz])
+
+  const handleDownloadPDF = useCallback(() => {
+    const quizForPdf = buildQuizForExport()
+    if (!quizForPdf) return
+    downloadQuizPDF(quizForPdf, user?.name || "Teacher")
+  }, [buildQuizForExport, user])
+
+  const handleDownloadWord = useCallback(() => {
+    const q = buildQuizForExport()
+    if (!q) return
+    const forDoc = {
+      id: q.id,
+      title: q.title,
+      subject: q.subject,
+      class: q.class,
+      chapters: q.chapters,
+      timeLimit: q.timeLimit,
+      totalQuestions: q.totalQuestions,
+      totalMarks: q.totalMarks,
+      questions: q.questions?.map((qn) => ({
+        questionText: qn.questionText,
+        questionType: qn.questionType,
+        marks: qn.marks,
+        options: qn.options?.map((o) => ({ optionLabel: o.optionLabel, optionText: o.optionText })),
+      })),
     }
+    downloadQuizDoc(forDoc, user?.name || "Teacher")
+  }, [buildQuizForExport, user])
 
-    const teacherName = user?.name || "Teacher"
-    downloadQuizPDF(quizForPdf, teacherName)
-  }, [quiz, user])
-
-  // Handle share
+  // Handle share - fetches public share link and shares it
   const handleShare = useCallback(async () => {
-    const shareUrl = window.location.href
-    const shareData = {
-      title: quiz?.title || "Quiz",
-      text: `Check out this quiz: ${quiz?.title || "Quiz"}`,
-      url: shareUrl,
-    }
-
-    // Try Web Share API first (available on mobile and some desktop browsers)
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData)
+    if (!quizId) return
+    try {
+      const res = await api.post<{ success: boolean; data: { shareToken: string } }>(
+        `/quizzes/${quizId}/share`,
+        {}
+      )
+      const shareToken = res?.data?.shareToken
+      if (!shareToken) {
+        alert("Unable to create share link. Generate questions first.")
         return
-      } catch (err) {
-        // User cancelled or share failed, fall back to clipboard
-        if ((err as Error).name !== "AbortError") {
-          console.error("Share failed:", err)
+      }
+      const shareUrl = `${getAppBaseUrl()}/share/quiz/${shareToken}`
+      const shareData = {
+        title: quiz?.title || "Quiz",
+        text: `Check out this quiz: ${quiz?.title || "Quiz"}`,
+        url: shareUrl,
+      }
+
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData)
+          return
+        } catch (err) {
+          if ((err as Error).name !== "AbortError") {
+            console.error("Share failed:", err)
+          }
         }
       }
-    }
 
-    // Fallback: Copy link to clipboard
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2000)
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        setLinkCopied(true)
+        setTimeout(() => setLinkCopied(false), 2000)
+      } catch (err) {
+        console.error("Failed to copy link:", err)
+        alert(`Copy this link: ${shareUrl}`)
+      }
     } catch (err) {
-      console.error("Failed to copy link:", err)
-      // Final fallback: show URL in alert
-      alert(`Copy this link: ${shareUrl}`)
+      const msg = err instanceof Error ? err.message : "Failed to create share link"
+      alert(msg)
     }
-  }, [quiz?.title])
+  }, [quizId, quiz?.title])
 
   // Dynamic quiz info
   const quizTitle = quiz?.title || "Generated Quiz"
@@ -196,19 +269,64 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
-        {/* Mobile: Plan Name and Duration (Default View) */}
+        {/* Mobile: Plan Name, Duration, Edit */}
         <div className="flex-shrink-0 lg:hidden bg-[#E9E9E9] px-4 py-3 rounded-t-2xl flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#242220]">{quizTitle}</h2>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="text-base font-medium text-[#242220]">{quizDuration}</span>
+            <button
+              onClick={handleEditToggle}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg ${
+                isEditMode ? "bg-[#DF6647] text-white" : "bg-[#E2DFF0] text-gray-700 hover:bg-[#D5D2E3]"
+              }`}
+            >
+              {isEditMode ? "Done" : "Edit"} <Edit size={16} />
+            </button>
           </div>
         </div>
 
-        {/* Desktop Header with Title */}
-        <div className="flex-shrink-0 hidden lg:block bg-[#E9E9E9] px-12 py-6 rounded-t-2xl">
+        {/* Desktop Header with Title and Edit */}
+        <div className="flex-shrink-0 hidden lg:flex bg-[#E9E9E9] px-12 py-6 rounded-t-2xl items-center justify-between">
           <h1 className="text-xl font-bold">{quizTitle}</h1>
+          <button
+            onClick={handleEditToggle}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg ${
+              isEditMode ? "bg-[#DF6647] text-white" : "bg-[#E2DFF0] text-gray-700 hover:bg-[#D5D2E3]"
+            }`}
+          >
+            {isEditMode ? "Done" : "Edit"} <Edit size={16} />
+          </button>
         </div>
 
+        {/* Error Message - shown in both modes */}
+        {saveError && (
+          <div className="px-4 lg:px-12 py-2 shrink-0">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+              {saveError}
+            </div>
+          </div>
+        )}
+
+        {/* Content: Edit mode vs Read-only */}
+        {isEditMode ? (
+          <div className="flex-1 min-h-0 flex flex-col border border-gray-200 rounded-b-2xl overflow-hidden">
+            <EditableQuiz
+              questions={questions.map((q, i) => ({
+                id: q.id,
+                text: q.text,
+                options: q.options || [],
+                correctAnswerIndex: Math.max(
+                  0,
+                  (q.options || []).indexOf(q.correctAnswer)
+                ),
+              }))}
+              onSave={handleSaveQuiz}
+              onCancel={() => setIsEditMode(false)}
+              isSaving={isSaving}
+            />
+          </div>
+        ) : (
+        <>
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="px-4 lg:px-8 py-4 lg:py-6">
@@ -276,15 +394,6 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
           </div>
         </div>
 
-        {/* Error Message */}
-        {saveError && (
-          <div className="px-4 lg:px-12 py-2">
-            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
-              {saveError}
-            </div>
-          </div>
-        )}
-
         {/* Footer Actions */}
         <div className="flex-shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
@@ -321,12 +430,12 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
               >
                 Modify Prompt
               </Button>
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-1 bg-[#DF6647] hover:bg-[#DF6647]/90 text-white rounded-xl font-semibold"
-              >
-                <Download size={18} /> Download
-              </button>
+              <DownloadDropdown
+                onDownloadPDF={handleDownloadPDF}
+                onDownloadWord={handleDownloadWord}
+                label="Download"
+                className="flex-1 bg-[#DF6647] hover:bg-[#DF6647]/90 text-white border-0"
+              />
             </div>
           </div>
 
@@ -340,12 +449,13 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
                 {linkCopied ? <Check size={18} /> : <Share2 size={18} />}
                 {linkCopied ? "Copied!" : "Share"}
               </button>
-              <button
-                onClick={handleDownload}
-                className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
-              >
-                <Download size={18} /> Download
-              </button>
+              <DownloadDropdown
+                onDownloadPDF={handleDownloadPDF}
+                onDownloadWord={handleDownloadWord}
+                label="Download"
+                variant="outline"
+                className="bg-[#E2DFF0] border-0 text-gray-700 hover:bg-[#D5D2E3]"
+              />
               <button
                 onClick={handlePrint}
                 className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
@@ -376,6 +486,8 @@ export default function GeneratedQuiz({ isEditMode = false, quiz, onSave }: Gene
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   )

@@ -58,6 +58,11 @@ router.get(
         });
       }
 
+      // No class = no class-based subjects
+      if (!student.classId) {
+        return successResponse(res, { subjects: [] });
+      }
+
       // Fallback: Get distinct subjects from published quizzes for student's class
       const subjects = await prisma.subject.findMany({
         where: {
@@ -131,6 +136,10 @@ router.get(
         return notFoundResponse(res, 'Student profile not found');
       }
 
+      if (!student.class) {
+        return successResponse(res, { classes: [] });
+      }
+
       // Get all classes in the student's school
       const classes = await prisma.class.findMany({
         where: {
@@ -170,6 +179,9 @@ router.get(
       const student = await getStudent(userId);
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
+      }
+      if (!student.classId) {
+        return successResponse(res, { lessons: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
       }
 
       // Parse query params
@@ -220,7 +232,7 @@ router.get(
         objective: lesson.objective,
         duration: lesson.duration,
         subject: lesson.subject,
-        chapters: lesson.chapters.map((lc) => lc.chapter),
+        chapters: lesson.chapters.map((lc: { chapter: { id: string; name: string } }) => lc.chapter),
         createdAt: lesson.createdAt,
       }));
 
@@ -254,6 +266,9 @@ router.get(
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
       }
+      if (!student.classId) {
+        return notFoundResponse(res, 'Lesson not found');
+      }
 
       // Get lesson and verify access
       const lesson = await prisma.lesson.findFirst({
@@ -284,7 +299,7 @@ router.get(
         content: lesson.content,
         referenceFileUrl: lesson.referenceFileUrl,
         subject: lesson.subject,
-        chapters: lesson.chapters.map((lc) => lc.chapter),
+        chapters: lesson.chapters.map((lc: { chapter: { id: string; name: string } }) => lc.chapter),
         createdAt: lesson.createdAt,
       });
     } catch (error) {
@@ -311,6 +326,9 @@ router.get(
       const student = await getStudent(userId);
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
+      }
+      if (!student.classId) {
+        return successResponse(res, { quizzes: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
       }
 
       // Parse query params
@@ -417,6 +435,9 @@ router.get(
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
       }
+      if (!student.classId) {
+        return notFoundResponse(res, 'Quiz not found');
+      }
 
       // Get quiz
       const quiz = await prisma.quiz.findFirst({
@@ -452,11 +473,11 @@ router.get(
       }
 
       // Check for in-progress attempt
-      const inProgressAttempt = quiz.attempts.find((a) => a.status === 'in_progress');
+      const inProgressAttempt = quiz.attempts?.find((a: { status: string }) => a.status === 'in_progress');
 
       // Check for latest completed attempt (submitted or graded)
-      const latestCompletedAttempt = quiz.attempts.find(
-        (a) => a.status === 'submitted' || a.status === 'graded'
+      const latestCompletedAttempt = quiz.attempts?.find(
+        (a: { status: string }) => a.status === 'submitted' || a.status === 'graded'
       );
 
       return successResponse(res, {
@@ -470,8 +491,8 @@ router.get(
         dueDate: quiz.dueDate,
         isOptional: quiz.isOptional,
         subject: quiz.subject,
-        chapters: quiz.chapters.map((qc) => qc.chapter),
-        attemptCount: quiz.attempts.length,
+        chapters: (quiz.chapters ?? []).map((qc: { chapter: { id: string; name: string } }) => qc.chapter),
+        attemptCount: (quiz.attempts ?? []).length,
         inProgressAttempt: inProgressAttempt
           ? {
               id: inProgressAttempt.id,
@@ -508,6 +529,9 @@ router.post(
       const student = await getStudent(userId);
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
+      }
+      if (!student.classId) {
+        return notFoundResponse(res, 'Quiz not found');
       }
 
       // Get quiz and verify access
@@ -1016,6 +1040,9 @@ router.get(
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
       }
+      if (!student.classId) {
+        return successResponse(res, { announcements: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
+      }
 
       // Parse query params
       const page = parseInt(req.query.page as string) || 1;
@@ -1046,7 +1073,7 @@ router.get(
         title: a.title,
         content: a.content,
         attachmentUrl: a.attachmentUrl,
-        teacherName: a.teacher.user.name,
+        teacherName: (a as { teacher?: { user: { name: string } } }).teacher?.user?.name ?? 'Unknown',
         createdAt: a.createdAt,
       }));
 
@@ -1080,6 +1107,9 @@ router.get(
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
       }
+      if (!student.classId) {
+        return notFoundResponse(res, 'Announcement not found');
+      }
 
       // Get announcement
       const announcement = await prisma.announcement.findFirst({
@@ -1105,7 +1135,7 @@ router.get(
         title: announcement.title,
         content: announcement.content,
         attachmentUrl: announcement.attachmentUrl,
-        teacherName: announcement.teacher.user.name,
+        teacherName: (announcement as { teacher?: { user: { name: string } } }).teacher?.user?.name ?? 'Unknown',
         createdAt: announcement.createdAt,
       });
     } catch (error) {
@@ -1132,6 +1162,9 @@ router.get(
       const student = await getStudent(userId);
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
+      }
+      if (!student.classId) {
+        return successResponse(res, { assessments: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
       }
 
       // Parse query params
@@ -1217,6 +1250,9 @@ router.get(
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
       }
+      if (!student.classId) {
+        return notFoundResponse(res, 'Assessment not found');
+      }
 
       // Get assessment
       const assessment = await prisma.assessment.findFirst({
@@ -1256,7 +1292,7 @@ router.get(
         referenceFileUrl: assessment.referenceFileUrl,
         questionPaper: assessment.questionPaper,
         subject: assessment.subject,
-        chapters: assessment.chapters.map((ac) => ac.chapter),
+        chapters: (assessment.chapters ?? []).map((ac: { chapter: { id: string; name: string } }) => ac.chapter),
         questionTypes: assessment.questionTypes,
         createdAt: assessment.createdAt,
       });
@@ -1460,6 +1496,9 @@ router.post(
       const student = await getStudent(userId);
       if (!student) {
         return notFoundResponse(res, 'Student profile not found');
+      }
+      if (!student.classId) {
+        return notFoundResponse(res, 'Announcement not found');
       }
 
       // Verify announcement exists and belongs to student's class

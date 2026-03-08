@@ -33,6 +33,7 @@ export const updateAssessmentSchema = z.object({
   questionTypes: z.array(questionTypeSchema).min(1).optional(),
   referenceBooks: z.array(z.string()).optional(),
   referenceFileUrl: z.string().url('Invalid URL').optional().nullable(),
+  questionPaper: z.any().optional(),
 });
 
 // Assessment query schema for filtering

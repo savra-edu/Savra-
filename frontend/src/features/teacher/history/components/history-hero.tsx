@@ -41,6 +41,21 @@ const TYPE_TO_BADGE: Record<string, { label: string; color: "pink" | "blue" | "o
   announcement: { label: "Announcement", color: "orange" }
 }
 
+function getHistoryItemHref(type: string, id: string): string {
+  switch (type) {
+    case "lesson":
+      return `/lesson-plan/edit?id=${id}`
+    case "quiz":
+      return `/quiz/generated?id=${id}`
+    case "assessment":
+      return `/assessments/create/question-paper?id=${id}`
+    case "announcement":
+      return "/announcements"
+    default:
+      return "#"
+  }
+}
+
 export default function HistoryHero() {
   const [activeTab, setActiveTab] = useState("All")
   const [sortBy, setSortBy] = useState("Date")
@@ -89,11 +104,13 @@ export default function HistoryHero() {
 
       return {
         id: item.id,
+        type: item.type,
         title: item.title,
         subtitle: `${item.targetClass} • ${item.subject}`,
         badge,
         date,
-        time
+        time,
+        href: getHistoryItemHref(item.type, item.id)
       }
     })
   }, [historyItems])
@@ -141,6 +158,7 @@ export default function HistoryHero() {
                       badge={item.badge}
                       date={item.date}
                       time={item.time}
+                      href={item.href}
                     />
                   ))
                 ) : (

@@ -64,6 +64,7 @@ function EditLessonPageContent() {
                 isEditMode={isEditMode}
                 onEditClick={() => setIsEditMode(!isEditMode)}
                 lessonTitle={lesson?.title}
+                minimal
             />
             <div className="flex-1 min-h-0">
                 <EditLessonDetails

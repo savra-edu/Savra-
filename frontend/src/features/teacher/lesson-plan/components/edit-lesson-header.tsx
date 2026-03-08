@@ -14,16 +14,17 @@ interface EditLessonHeaderProps {
     isEditMode?: boolean
     onEditClick?: () => void
     lessonTitle?: string
+    /** When true, shows only back button, title, and edit button (no search, subject/class dropdowns) */
+    minimal?: boolean
 }
 
-export function EditLessonHeader({ className, isEditMode = false, onEditClick, lessonTitle }: EditLessonHeaderProps) {
+export function EditLessonHeader({ className, isEditMode = false, onEditClick, lessonTitle, minimal = false }: EditLessonHeaderProps) {
     const { data: subjects } = useTeacherSubjects()
     const { data: classes } = useTeacherClasses()
 
     const [subject, setSubject] = useState<string>("")
     const [classValue, setClassValue] = useState<string>("")
 
-    // Set default values when data loads
     useEffect(() => {
         if (subjects && subjects.length > 0 && !subject) {
             setSubject(subjects[0])
@@ -37,9 +38,38 @@ export function EditLessonHeader({ className, isEditMode = false, onEditClick, l
         }
     }, [classes, classValue])
 
+    const editButton = (
+        <Button
+            onClick={onEditClick}
+            className={`font-semibold px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                isEditMode
+                    ? "bg-[#DF6647] hover:bg-[#DF6647]/90 text-white"
+                    : "bg-[#9B61FF] hover:bg-[#8B51EF] text-white"
+            }`}
+        >
+            <Pencil className="w-4 h-4" />
+            {isEditMode ? "Done" : "Edit"}
+        </Button>
+    )
+
+    if (minimal) {
+        return (
+            <div className={`flex items-center justify-between border-b border-gray-200 pb-4 gap-4 ${className || ""}`}>
+                <div className="flex items-center gap-3">
+                    <Link href="/lesson-plan" className="shrink-0">
+                        <ChevronLeft className="w-8 h-8 text-black cursor-pointer hover:opacity-80" />
+                    </Link>
+                    <h1 className="text-lg lg:text-xl font-bold text-[#242220] truncate">
+                        {lessonTitle || "Edit Lesson Plan"}
+                    </h1>
+                </div>
+                {editButton}
+            </div>
+        )
+    }
+
     return (
         <div className={`flex flex-col lg:flex-row lg:justify-between lg:items-center border-b border-gray-200 pb-4 lg:pb-6 gap-4 ${className || ""}`}>
-            {/* Mobile Header */}
             <div className="lg:hidden flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Link href="/lesson-plan">
@@ -47,25 +77,15 @@ export function EditLessonHeader({ className, isEditMode = false, onEditClick, l
                     </Link>
                     <h1 className="text-base font-bold text-[#242220]">Generated Plan</h1>
                 </div>
-                <Button 
-                    onClick={onEditClick}
-                    className={`font-semibold px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${
-                        isEditMode 
-                            ? "bg-[#DF6647] hover:bg-[#DF6647]/90 text-white" 
-                            : "bg-[#9B61FF] hover:bg-[#8B51EF] text-white"
-                    }`}
-                >
-                    <Pencil className="w-4 h-4" />
-                    {isEditMode ? "Done" : "Edit"}
-                </Button>
+                {editButton}
             </div>
 
-            {/* Desktop Header */}
             <div className="hidden lg:flex items-center gap-4">
                 <Link href="/lesson-plan">
                     <ChevronLeft className="w-12 h-12 text-black rounded-full p-4 bg-[#F5F5F5] cursor-pointer hover:bg-[#E5E5E5] transition-colors" />
                 </Link>
                 <h1 className="text-3xl font-bold text-[#242220]">Edit Lesson Plan</h1>
+                {editButton}
             </div>
             <div className="hidden lg:flex items-center gap-4">
                 <SearchBar />

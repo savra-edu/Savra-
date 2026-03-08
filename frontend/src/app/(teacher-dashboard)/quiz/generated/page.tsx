@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense, useMemo } from "react"
+import { Suspense, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { GeneratedHeader } from "@/features/teacher/quiz/components/generated-header"
 import GeneratedQuiz from "@/features/teacher/quiz/components/generated-quiz"
@@ -54,7 +54,6 @@ interface TransformedQuestion {
 function GeneratedQuizPageContent() {
     const searchParams = useSearchParams()
     const quizId = searchParams.get("id")
-    const [isEditMode, setIsEditMode] = useState(false)
 
     // Fetch quiz info
     const { data: quiz, isLoading: quizLoading, error: quizError, refetch: refetchQuiz } = useFetch<Quiz>(
@@ -147,13 +146,11 @@ function GeneratedQuizPageContent() {
     return (
         <div className="flex flex-col h-full p-4 lg:p-8">
             <GeneratedHeader
-                isEditMode={isEditMode}
-                onEditClick={() => setIsEditMode(!isEditMode)}
                 className="flex-shrink-0 mb-4"
                 quizTitle={quizWithQuestions?.title}
             />
             <div className="flex-1 min-h-0 overflow-hidden">
-                <GeneratedQuiz isEditMode={isEditMode} quiz={quizWithQuestions} onSave={refetch} />
+                <GeneratedQuiz quiz={quizWithQuestions} onSave={refetch} />
             </div>
         </div>
     )

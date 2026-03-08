@@ -104,13 +104,13 @@ router.get('/', authMiddleware, async (req: Request, res: Response, next: NextFu
         studentId: student.id,
         rollNumber: student.rollNumber,
         totalPoints: student.totalPoints,
-        class: {
+        class: student.class ? {
           id: student.class.id,
           name: student.class.name,
           grade: student.class.grade,
           section: student.class.section,
-        },
-        school: student.class.school,
+        } : null,
+        school: student.class?.school ?? null,
         subjects: student.subjects.map((s) => s.subject),
       });
     }
@@ -235,11 +235,10 @@ router.put(
         try {
           await prisma.$transaction(async (tx) => {
             // Update class assignment if provided (single class for student)
-            if (classIds !== undefined && classIds.length > 0) {
-              console.log('Updating class to:', classIds[0]);
+            if (classIds !== undefined) {
               await tx.student.update({
                 where: { id: student.id },
-                data: { classId: classIds[0] },
+                data: { classId: classIds.length > 0 ? classIds[0] : null },
               });
             }
 

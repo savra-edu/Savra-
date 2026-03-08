@@ -11,8 +11,7 @@ export default function TeacherSignupPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [schoolCode, setSchoolCode] = useState("")
-  const [location, setLocation] = useState("")
+  const [schoolName, setSchoolName] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
@@ -23,7 +22,7 @@ export default function TeacherSignupPage() {
     e.preventDefault()
     setError("")
 
-    if (!name || !email || !password || !confirmPassword || !schoolCode) {
+    if (!name || !email || !password || !confirmPassword) {
       setError("Please fill in all required fields")
       return
     }
@@ -45,8 +44,7 @@ export default function TeacherSignupPage() {
         email,
         password,
         role: "teacher",
-        schoolCode,
-        location: location || undefined,
+        schoolName: schoolName.trim() || undefined,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed. Please try again.")
@@ -110,23 +108,12 @@ export default function TeacherSignupPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#242220] mb-2">School Code *</label>
+            <label className="block text-sm font-medium text-[#242220] mb-2">School Name (Optional)</label>
             <input
               type="text"
-              placeholder="Enter school code"
-              value={schoolCode}
-              onChange={(e) => setSchoolCode(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#242220] mb-2">Location (Optional)</label>
-            <input
-              type="text"
-              placeholder="Enter your location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Enter your school name"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
               className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
             />
           </div>
@@ -240,27 +227,15 @@ export default function TeacherSignupPage() {
             />
           </div>
 
-          <div className="flex gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#242220] mb-2">School Code *</label>
-              <input
-                type="text"
-                placeholder="Enter school code"
-                value={schoolCode}
-                onChange={(e) => setSchoolCode(e.target.value)}
-                className="px-4 w-[192px] py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#242220] mb-2">Location (Optional)</label>
-              <input
-                type="text"
-                placeholder="Your location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="px-4 w-[192px] py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-[#242220] mb-2">School Name (Optional)</label>
+            <input
+              type="text"
+              placeholder="Enter your school name"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
+              className="px-4 w-[400px] py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#DF6647] focus:ring-2 focus:ring-[#DF6647]/20 placeholder-gray-400 text-[#242220]"
+            />
           </div>
 
           <div>

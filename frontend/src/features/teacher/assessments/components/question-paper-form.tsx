@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Edit2 } from "lucide-react"
+import { Plus, Edit2, ChevronDown, X } from "lucide-react"
 import AddTypeDialog from "./add-type-dialog"
 import { FileUploadSection } from "@/features/teacher/lesson-plan/components/file-upload-section"
+import { GeneratingOverlay } from "@/components/generating-overlay"
 import { api } from "@/lib/api"
 import { useChapters } from "@/hooks/use-chapters"
 
@@ -39,12 +40,24 @@ interface QuestionPaperFormProps {
   selectedSubjectId: string
 }
 
+const QUESTION_TYPE_DISPLAY_NAMES: Record<string, string> = {
+  mcq: "MCQs",
+  short_answer: "Short Answer",
+  long_answer: "Long Answer",
+  case_study: "Case study",
+  fill_in_blanks: "Fill In The Blanks",
+  problem_solving: "Problem Solving",
+  diagram_based: "Diagram Based",
+}
+
 export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }: QuestionPaperFormProps) {
   const router = useRouter()
 
   // Chapters - load based on selected subject
   const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined)
   const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
+  const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false)
+  const chapterDropdownRef = useRef<HTMLDivElement>(null)
 
   const [totalMarks, setTotalMarks] = useState<string>("")
   const [difficultyLevel, setDifficultyLevel] = useState<string>("")
@@ -66,20 +79,42 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
     setSelectedChapterIds([])
   }, [selectedSubjectId])
 
-  // Form validation
+  // Close chapter dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (chapterDropdownRef.current && !chapterDropdownRef.current.contains(e.target as Node)) {
+        setChapterDropdownOpen(false)
+      }
+    }
+    if (chapterDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [chapterDropdownOpen])
+
+  // Form validation (Question Paper Objective is optional)
   const isFormValid = useMemo(() => {
     return selectedClassId !== "" &&
            selectedSubjectId !== "" &&
            selectedChapterIds.length > 0 &&
-           totalMarks !== "" &&
-           objective.trim() !== ""
-  }, [selectedClassId, selectedSubjectId, selectedChapterIds, totalMarks, objective])
+           totalMarks !== ""
+  }, [selectedClassId, selectedSubjectId, selectedChapterIds, totalMarks])
+
+  const clampNonNegative = (v: string): string => {
+    if (v === '') return v
+    const n = parseInt(v, 10)
+    return (isNaN(n) || n < 0) ? '0' : v
+  }
 
   const toggleChapter = (chapterId: string) => {
     setSelectedChapterIds((prev) =>
       prev.includes(chapterId) ? prev.filter((c) => c !== chapterId) : [...prev, chapterId]
     )
   }
+
+  const selectedChapterNames = chaptersData
+    ?.filter((ch: Chapter) => selectedChapterIds.includes(ch.id))
+    .map((ch: Chapter) => ch.name) || []
 
   const handleGenerate = async () => {
     if (!isFormValid) return
@@ -109,11 +144,6 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
         }
       }
 
-      // Get chapter names for title
-      const selectedChapterNames = chaptersData
-        ?.filter((ch: Chapter) => selectedChapterIds.includes(ch.id))
-        .map((ch: Chapter) => ch.name) || []
-
       // Create assessment with correct field names
       const assessmentData = {
         classId: selectedClassId,
@@ -130,7 +160,7 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
             marksPerQuestion: parseInt(qt.marksPerQuestion) || 1
           })),
         referenceBooks: selectedBooks,
-        objective,
+        objective: objective.trim() || undefined,
         referenceFileUrl,
       }
 
@@ -155,8 +185,31 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
 
   const handleQuestionTypeChange = (index: number, field: "numQuestions" | "marksPerQuestion", value: string) => {
     const updated = [...questionTypes]
-    updated[index][field] = value
+    updated[index][field] = clampNonNegative(value)
     setQuestionTypes(updated)
+  }
+
+  const removeQuestionType = (index: number) => {
+    setQuestionTypes((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleAddQuestionTypes = (typeNames: string[]) => {
+    const dialogToInternal: Record<string, string> = {
+      "Diagram-Based Questions": "diagram_based",
+      "Fill in the Blanks": "fill_in_blanks",
+      "Numerical / Problem Solving": "problem_solving",
+    }
+    const existingNames = new Set(questionTypes.map(qt => qt.name))
+    const newTypes: QuestionType[] = []
+    for (const displayName of typeNames) {
+      const internal = dialogToInternal[displayName]
+      if (internal && !existingNames.has(internal)) {
+        newTypes.push({ name: internal, numQuestions: "0", marksPerQuestion: "1" })
+      }
+    }
+    if (newTypes.length > 0) {
+      setQuestionTypes(prev => [...prev, ...newTypes])
+    }
   }
 
   const books = ["NCERT Textbook (Default)", "XAM Ideas", "All in ONE", "Oswald Question Bank"]
@@ -169,78 +222,89 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
     }
   }
 
-  // Display names for question types
-  const questionTypeDisplayNames: Record<string, string> = {
-    mcq: "MCQ",
-    short_answer: "Short Answers",
-    long_answer: "Long Answers",
-    case_study: "Case Study"
-  }
-
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {isLoading && <GeneratingOverlay type="assessment" onCancel={() => setIsLoading(false)} />}
       {/* Scrollable Content Area */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
-        {/* Chapters Section */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-base font-bold text-[#000000] mb-4">Select Chapters</h2>
-          {!selectedSubjectId ? (
-            <p className="text-gray-500 text-sm">Please select a subject from the header</p>
-          ) : chaptersLoading ? (
-            <div className="w-6 h-6 border-2 border-[#DF6647] border-t-transparent rounded-full animate-spin"></div>
-          ) : chaptersData && chaptersData.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {chaptersData.map((chapter: Chapter) => (
-                <button
-                  key={chapter.id}
-                  onClick={() => toggleChapter(chapter.id)}
-                  className={`px-4 py-2 rounded-full border-2 transition-colors font-medium text-sm ${
-                    selectedChapterIds.includes(chapter.id)
-                      ? "bg-[#E8E2F0] border-[#9B61FF] text-[#242220]"
-                      : "border-gray-300 text-[#353535] hover:border-gray-400"
-                  }`}
-                >
-                  {chapter.name}
-                </button>
-              ))}
+        {/* Row: Chapters + Total Marks + Level */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 mb-6 lg:mb-8">
+          {/* Chapter dropdown */}
+          <div className="flex flex-col gap-2 flex-1 min-w-0">
+            <label className="text-base font-bold text-[#000000]">Select the chapter(s)</label>
+            <div ref={chapterDropdownRef} className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedSubjectId && !chaptersLoading) setChapterDropdownOpen(prev => !prev)
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 border border-[#A56AFF] rounded-lg bg-white text-left text-sm"
+              >
+                <span className={`truncate ${selectedChapterNames.length > 0 ? "text-[#242220]" : "text-gray-400"}`}>
+                  {!selectedSubjectId
+                    ? "Select a subject first"
+                    : chaptersLoading
+                    ? "Loading..."
+                    : selectedChapterNames.length > 0
+                    ? selectedChapterNames.join(", ")
+                    : "Select"}
+                </span>
+                <ChevronDown className="w-5 h-5 text-gray-500 shrink-0 ml-2" />
+              </button>
+              {chapterDropdownOpen && chaptersData && chaptersData.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                  {chaptersData.map((chapter: Chapter) => (
+                    <button
+                      key={chapter.id}
+                      type="button"
+                      onClick={() => toggleChapter(chapter.id)}
+                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                        selectedChapterIds.includes(chapter.id)
+                          ? "bg-[#EFE9F8] text-[#9B61FF] font-medium"
+                          : "text-[#242220]"
+                      }`}
+                    >
+                      {chapter.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <p className="text-gray-500 text-sm">No chapters found for this subject</p>
-          )}
-        </div>
+          </div>
 
-        {/* Total Marks and Level */}
-        <div className="flex flex-row flex-wrap gap-6 mb-6">
+          {/* Total Marks */}
           <div className="flex flex-col gap-2">
-            <label className="text-base font-semibold text-[#000000]">Total Marks</label>
+            <label className="text-base font-bold text-[#000000]">Total Marks</label>
             <Input
               value={totalMarks}
-              onChange={(e) => setTotalMarks(e.target.value)}
-              placeholder="Enter total marks"
+              onChange={(e) => setTotalMarks(clampNonNegative(e.target.value))}
+              placeholder="Type here"
               type="number"
-              className="w-[150px] px-4 py-3 border border-[#A56AFF] rounded-lg"
+              min={0}
+              className="w-full lg:w-[140px] px-4 py-3 border border-[#A56AFF] rounded-lg [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
             />
           </div>
 
+          {/* Level */}
           <div className="flex flex-col gap-2">
-            <label className="text-base font-semibold text-[#000000]">Difficulty Level</label>
+            <label className="text-base font-bold text-[#000000]">Level</label>
             <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
-              <SelectTrigger className="w-[150px] border-[#A56AFF]">
+              <SelectTrigger className="w-full lg:w-[140px] border-[#A56AFF]">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent side="bottom" align="start" position="popper" sideOffset={4}>
                 <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="medium">Intermediate</SelectItem>
                 <SelectItem value="hard">Hard</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Type of Questions Section */}
+        {/* Types of Questions */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-[#000000]">Type of Questions</h2>
+            <h2 className="text-base font-bold text-[#000000]">Types of Questions</h2>
             <button
               onClick={() => setIsAddTypeDialogOpen(true)}
               className="text-[#9B61FF] font-semibold text-sm flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
@@ -249,31 +313,39 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
             {questionTypes.map((type, index) => (
-              <div key={type.name} className="space-y-2">
-                <p className="text-base font-medium text-[#6A6A6A]">{questionTypeDisplayNames[type.name] || type.name}</p>
+              <div key={type.name} className="relative">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-[#000000]">
+                    {QUESTION_TYPE_DISPLAY_NAMES[type.name] || type.name}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeQuestionType(index)}
+                    className="p-0.5 rounded-full border border-red-600 hover:border-red-600 hover:bg-red-50 text-red-500 hover:text-red-600 transition-colors"
+                    aria-label={`Remove ${QUESTION_TYPE_DISPLAY_NAMES[type.name] || type.name}`}
+                  >
+                    <X className="w-3 h-3" strokeWidth={2.5} />
+                  </button>
+                </div>
                 <div className="flex gap-1">
-                  <div className="flex-1 max-w-[150px]">
-                    <label className="block text-sm font-medium text-[#6A6A6A] mb-1">No. of Questions</label>
-                    <Input
-                      value={type.numQuestions}
-                      onChange={(e) => handleQuestionTypeChange(index, "numQuestions", e.target.value)}
-                      placeholder="0"
-                      type="number"
-                      className="px-4 py-3 border border-[#7D5CB0] rounded-lg text-sm"
-                    />
-                  </div>
-                  <div className="flex-1 max-w-[150px]">
-                    <label className="block text-sm font-medium text-[#6A6A6A] mb-1">Marks per Q</label>
-                    <Input
-                      value={type.marksPerQuestion}
-                      onChange={(e) => handleQuestionTypeChange(index, "marksPerQuestion", e.target.value)}
-                      placeholder="1"
-                      type="number"
-                      className="px-4 py-3 border border-[#7D5CB0] rounded-lg text-sm"
-                    />
-                  </div>
+                  <Input
+                    value={type.numQuestions}
+                    onChange={(e) => handleQuestionTypeChange(index, "numQuestions", e.target.value)}
+                    placeholder="No of Ques"
+                    type="number"
+                    min={0}
+                    className="flex-1 min-w-0 px-2 py-2 border border-[#7D5CB0] rounded-lg text-xs [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
+                  />
+                  <Input
+                    value={type.marksPerQuestion}
+                    onChange={(e) => handleQuestionTypeChange(index, "marksPerQuestion", e.target.value)}
+                    placeholder="Total Marks"
+                    type="number"
+                    min={0}
+                    className="flex-1 min-w-0 px-2 py-2 border border-[#7D5CB0] rounded-lg text-xs [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
+                  />
                 </div>
               </div>
             ))}
@@ -285,7 +357,7 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-[#000000]">Reference Books</h2>
             <button className="text-[#9B61FF] font-semibold text-sm flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
-              Add book <Plus className="w-4 h-4" strokeWidth={3} />
+              Add Books <Plus className="w-4 h-4" strokeWidth={3} />
             </button>
           </div>
 
@@ -320,7 +392,7 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
             onChange={(e) => setObjective(e.target.value)}
             placeholder="Share how you'd like this question paper to be created — for example, topics to focus on, HOTS or case-based questions, or follow a CBSE exam pattern."
             className="w-full px-6 py-4 border-t-0 text-sm rounded-b-lg border border-[#DCDCDC]"
-            rows={6}
+            rows={4}
           />
         </div>
 
@@ -332,30 +404,33 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId }
       </div>
 
       {/* Fixed Bottom Section */}
-      <div className="flex-shrink-0 border-t border-gray-200 pt-4 lg:pt-6 mt-4 bg-white">
-        {/* Error Message */}
+      <div className="shrink-0 border-t border-gray-200 pt-4 lg:pt-6 mt-4 bg-white">
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
             {error}
           </div>
         )}
-        {/* Generate Button */}
         <div className="flex justify-center lg:justify-end">
           <Button
             onClick={handleGenerate}
             disabled={!isFormValid || isLoading}
-            className={`w-full lg:w-auto px-6 py-4 lg:py-6 rounded-xl font-semibold text-white transition-all ${
+            className={`w-full lg:w-auto px-8 py-4 lg:py-6 rounded-xl font-semibold text-white transition-all ${
               isFormValid && !isLoading
                 ? "bg-[#DF6647] hover:bg-[#FF5A35] shadow-lg hover:shadow-xl cursor-pointer"
                 : "bg-[#B5B5B5] opacity-60 cursor-not-allowed"
             }`}
           >
-            {isLoading ? "Generating..." : "Generate Assessment"}
+            {isLoading ? "Generating..." : "Generate"}
           </Button>
         </div>
       </div>
 
-      <AddTypeDialog open={isAddTypeDialogOpen} onOpenChange={setIsAddTypeDialogOpen} />
+      <AddTypeDialog
+        open={isAddTypeDialogOpen}
+        onOpenChange={setIsAddTypeDialogOpen}
+        onAdd={handleAddQuestionTypes}
+        existingTypes={questionTypes.map(qt => qt.name)}
+      />
     </div>
   )
 }

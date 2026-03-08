@@ -17,7 +17,7 @@ interface RegisterRequest {
   password: string;
   name: string;
   role: 'teacher' | 'student' | 'admin';
-  schoolCode: string;
+  schoolName?: string;
   classId?: string;
   location?: string;
 }
