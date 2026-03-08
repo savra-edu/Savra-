@@ -484,7 +484,9 @@ function UserProfileContent() {
                         </button>
                       ))
                     ) : (
-                      <div className="px-4 py-2 text-gray-500 text-sm">All classes selected</div>
+                      <div className="px-4 py-2 text-gray-500 text-sm">
+                        {selectedClasses.length > 0 ? "All classes selected" : "No classes available in your school"}
+                      </div>
                     )}
                   </div>
                 )}
@@ -630,7 +632,9 @@ function UserProfileContent() {
                           </button>
                         ))
                       ) : (
-                        <div className="px-4 py-2 text-gray-500 text-sm">All classes selected</div>
+                        <div className="px-4 py-2 text-gray-500 text-sm">
+                          {selectedClasses.length > 0 ? "All classes selected" : "No classes available in your school"}
+                        </div>
                       )}
                     </div>
                   )}

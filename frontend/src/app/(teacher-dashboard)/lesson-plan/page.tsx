@@ -7,8 +7,8 @@ import { useTeacherSubjects } from "@/hooks/use-subjects"
 import { useTeacherClasses } from "@/hooks/use-classes"
 
 export default function LessonPlanPage() {
-    const { data: subjects } = useTeacherSubjects()
-    const { data: classes } = useTeacherClasses()
+    const { data: subjects, isLoading: isSubjectsLoading } = useTeacherSubjects()
+    const { data: classes, isLoading: isClassesLoading } = useTeacherClasses()
 
     const [subject, setSubject] = useState<string>("")
     const [classValue, setClassValue] = useState<string>("")
@@ -36,6 +36,8 @@ export default function LessonPlanPage() {
                 onClassChange={setClassValue}
                 subjects={subjects ?? undefined}
                 classes={classes ?? undefined}
+                isClassesLoading={isClassesLoading}
+                isSubjectsLoading={isSubjectsLoading}
             />
             <div className="flex-1 min-h-0 overflow-hidden">
                 <CreateLesson 

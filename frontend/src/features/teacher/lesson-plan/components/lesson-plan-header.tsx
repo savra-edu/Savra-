@@ -11,6 +11,8 @@ interface LessonPlanHeaderProps {
     onClassChange: (value: string) => void
     subjects?: string[]
     classes?: Array<{ id: string; name: string; grade: number; section: string }>
+    isClassesLoading?: boolean
+    isSubjectsLoading?: boolean
 }
 
 export function LessonPlanHeader({ 
@@ -20,7 +22,9 @@ export function LessonPlanHeader({
     onSubjectChange, 
     onClassChange,
     subjects,
-    classes
+    classes,
+    isClassesLoading,
+    isSubjectsLoading,
 }: LessonPlanHeaderProps) {
 
     return (
@@ -32,15 +36,17 @@ export function LessonPlanHeader({
                     <SubjectSelect
                         value={subject}
                         onValueChange={onSubjectChange}
-                        placeholder="Subject"
+                        placeholder={isSubjectsLoading ? "Loading..." : "Subject"}
                         subjects={subjects || undefined}
+                        disabled={isSubjectsLoading || !subjects?.length}
                         className="w-[80px] h-8 text-xs border-[#9B61FF] bg-white text-[#9B61FF] font-medium"
                     />
                     <ClassSelect
                         value={classValue}
                         onValueChange={onClassChange}
-                        placeholder="Class"
+                        placeholder={isClassesLoading ? "Loading..." : "Class"}
                         classes={classes || undefined}
+                        disabled={isClassesLoading || !classes?.length}
                         className="w-[90px] h-8 text-xs bg-[#9B61FF] text-white font-medium"
                     />
                 </div>
@@ -55,14 +61,16 @@ export function LessonPlanHeader({
                 <SubjectSelect
                     value={subject}
                     onValueChange={onSubjectChange}
-                    placeholder="Select subject"
+                    placeholder={isSubjectsLoading ? "Loading..." : "Select subject"}
                     subjects={subjects || undefined}
+                    disabled={isSubjectsLoading || !subjects?.length}
                 />
                 <ClassSelect
                     value={classValue}
                     onValueChange={onClassChange}
-                    placeholder="Select class"
+                    placeholder={isClassesLoading ? "Loading..." : "Select class"}
                     classes={classes || undefined}
+                    disabled={isClassesLoading || !classes?.length}
                 />
             </div>
         </div>

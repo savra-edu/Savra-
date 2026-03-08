@@ -32,6 +32,8 @@ interface QuizHeaderProps {
     selectedSubjectId: string
     onClassChange: (classId: string) => void
     onSubjectChange: (subjectId: string) => void
+    isClassesLoading?: boolean
+    isSubjectsLoading?: boolean
 }
 
 export function QuizHeader({
@@ -41,7 +43,9 @@ export function QuizHeader({
     selectedClassId,
     selectedSubjectId,
     onClassChange,
-    onSubjectChange
+    onSubjectChange,
+    isClassesLoading,
+    isSubjectsLoading,
 }: QuizHeaderProps) {
     // One class per grade (sections share same chapters); use first section for each grade
     const classesByGrade = useMemo(() => {
@@ -67,9 +71,9 @@ export function QuizHeader({
                     <h1 className="text-xl font-bold text-[#242220] ml-3">Create Quiz</h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange}>
+                    <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange} disabled={isSubjectsLoading || !subjects?.length}>
                         <SelectTrigger className="w-[80px] h-8 text-xs border-[#9B61FF] bg-white text-[#9B61FF] font-medium">
-                            <SelectValue placeholder="Subject" />
+                            <SelectValue placeholder={isSubjectsLoading ? "Loading..." : "Subject"} />
                         </SelectTrigger>
                         <SelectContent>
                             {subjects?.map((s) => (
@@ -77,9 +81,9 @@ export function QuizHeader({
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select value={selectedClassId || undefined} onValueChange={onClassChange}>
+                    <Select value={selectedClassId || undefined} onValueChange={onClassChange} disabled={isClassesLoading || !classesByGrade.length}>
                         <SelectTrigger className="w-[90px] h-8 text-xs bg-[#9B61FF] text-white font-medium border-[#9B61FF] [&_span]:text-white [&_svg]:!text-white [&_svg]:!opacity-100">
-                            <SelectValue placeholder="Class" className="text-white placeholder:text-white" />
+                            <SelectValue placeholder={isClassesLoading ? "Loading..." : "Class"} className="text-white placeholder:text-white" />
                         </SelectTrigger>
                         <SelectContent>
                             {classesByGrade.map((c) => (
@@ -100,9 +104,9 @@ export function QuizHeader({
             <div className="hidden lg:flex items-center gap-4">
                 <SearchBar />
                 {/* Subject Dropdown */}
-                <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange}>
+                <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange} disabled={isSubjectsLoading || !subjects?.length}>
                     <SelectTrigger className="w-[120px] h-14 p-2 bg-white text-[#353535] font-medium border-0">
-                        <SelectValue placeholder="Select Subject" />
+                        <SelectValue placeholder={isSubjectsLoading ? "Loading..." : "Select Subject"} />
                     </SelectTrigger>
                     <SelectContent>
                         {subjects?.map((subject) => (
@@ -113,9 +117,9 @@ export function QuizHeader({
                     </SelectContent>
                 </Select>
                 {/* Class Dropdown */}
-                <Select value={selectedClassId || undefined} onValueChange={onClassChange}>
+                <Select value={selectedClassId || undefined} onValueChange={onClassChange} disabled={isClassesLoading || !classesByGrade.length}>
                     <SelectTrigger className="w-[150px] h-10 p-2 bg-[#9B61FF] text-white font-semibold border-0 hover:bg-[#8B51EF] [&_span]:text-white [&_svg]:!text-white [&_svg]:!opacity-100">
-                        <SelectValue placeholder="Select Class" className="text-white placeholder:text-white" />
+                        <SelectValue placeholder={isClassesLoading ? "Loading..." : "Select Class"} className="text-white placeholder:text-white" />
                     </SelectTrigger>
                     <SelectContent>
                         {classesByGrade.map((c) => (
