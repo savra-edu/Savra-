@@ -43,6 +43,19 @@ router.post(
         school = await prisma.school.create({
           data: { name: schoolDisplayName, code },
         });
+
+        // Create default classes (grades 1-12, sections A-E) for the new school
+        const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        const sections = ['A', 'B', 'C', 'D', 'E'];
+        const classData = grades.flatMap((grade) =>
+          sections.map((section) => ({
+            schoolId: school!.id,
+            grade,
+            section,
+            name: `Class ${grade} ${section}`,
+          }))
+        );
+        await prisma.class.createMany({ data: classData });
       }
 
       // For students, validate classId

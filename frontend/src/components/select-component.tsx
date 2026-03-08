@@ -17,6 +17,7 @@ interface SubjectSelectProps {
   placeholder?: string
   className?: string
   subjects?: string[]
+  disabled?: boolean
 }
 
 export function SubjectSelect({
@@ -24,13 +25,13 @@ export function SubjectSelect({
   onValueChange,
   placeholder = "Select subject",
   className,
-  subjects
+  subjects,
+  disabled,
 }: SubjectSelectProps) {
-  // Only show subjects from API - no fallback to prevent showing wrong data
   const subjectList = subjects && subjects.length > 0 ? subjects : []
 
   return (
-    <Select value={value || undefined} onValueChange={onValueChange}>
+    <Select value={value || undefined} onValueChange={onValueChange} disabled={disabled || subjectList.length === 0}>
       <SelectTrigger
         className={cn(
           "w-[120px] h-14 p-2 bg-white ",
@@ -68,6 +69,7 @@ interface ClassSelectProps {
   placeholder?: string
   className?: string
   classes?: ClassData[]
+  disabled?: boolean
 }
 
 export function ClassSelect({
@@ -75,7 +77,8 @@ export function ClassSelect({
   onValueChange,
   placeholder = "Select Class",
   className,
-  classes
+  classes,
+  disabled,
 }: ClassSelectProps) {
   // Only build grade structure from API classes - no fallback to prevent showing wrong data
   const gradeStructure = classes && classes.length > 0
@@ -171,7 +174,8 @@ export function ClassSelect({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        onClick={() => { if (!disabled) setIsDropdownOpen(!isDropdownOpen) }}
+        disabled={disabled}
         className={cn(
           "w-[150px] h-10 p-2 bg-[#9B61FF]",
           "text-white font-semibold",

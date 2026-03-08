@@ -7,8 +7,8 @@ import { useTeacherClasses } from "@/hooks/use-classes"
 import { useTeacherSubjectsData } from "@/hooks/use-subjects"
 
 export default function CreatePaperPage() {
-    const { data: classes } = useTeacherClasses()
-    const { data: subjects } = useTeacherSubjectsData()
+    const { data: classes, isLoading: isClassesLoading } = useTeacherClasses()
+    const { data: subjects, isLoading: isSubjectsLoading } = useTeacherSubjectsData()
     const [selectedClassId, setSelectedClassId] = useState<string>("")
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("")
     const selectedGrade = classes?.find((c) => c.id === selectedClassId)?.grade ?? null
@@ -23,6 +23,8 @@ export default function CreatePaperPage() {
                 selectedSubjectId={selectedSubjectId}
                 onClassChange={setSelectedClassId}
                 onSubjectChange={setSelectedSubjectId}
+                isClassesLoading={isClassesLoading}
+                isSubjectsLoading={isSubjectsLoading}
             />
             <div className="flex-1 min-h-0 overflow-hidden">
                 <QuestionPaperForm
