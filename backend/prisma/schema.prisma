@@ -126,10 +126,11 @@ model Subject {
 
 // Chapter
 model Chapter {
-  id         String @id @default(uuid())
-  subjectId  String @map("subject_id")
+  id         String  @id @default(uuid())
+  subjectId  String  @map("subject_id")
   name       String
-  orderIndex Int    @map("order_index")
+  orderIndex Int     @map("order_index")
+  grade      Int?    // CBSE grade (9–12); null = legacy/unassigned
 
   // Relations
   subject            Subject             @relation(fields: [subjectId], references: [id])

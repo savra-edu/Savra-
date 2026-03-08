@@ -877,8 +877,8 @@ Return a JSON object with this structure:
       "title": "Section A - Multiple Choice Questions",
       "instructions": "Choose the correct option.",
       "questions": [
-        { "number": 1, "text": "Question text?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1 },
-        { "number": 2, "text": "Another question?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1 }
+        { "number": 1, "text": "Question text?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1, "answer": "Option 2" },
+        { "number": 2, "text": "Another question?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1, "answer": "Option 3" }
       ]
     },
     {
@@ -886,7 +886,7 @@ Return a JSON object with this structure:
       "title": "Section B - Short Answer",
       "instructions": "Answer in 2-3 sentences.",
       "questions": [
-        { "number": 3, "text": "Question text?", "marks": 2 }
+        { "number": 3, "text": "Question text?", "marks": 2, "answer": "A concise model answer." }
       ]
     }
   ]

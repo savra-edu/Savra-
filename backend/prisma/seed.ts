@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { CHAPTER_GRADE_REFERENCE } from '../src/lib/chapter-grade-reference';
 
 const prisma = new PrismaClient();
 
@@ -43,106 +44,34 @@ async function main() {
   }
   console.log('');
 
-  // Create Chapters for each subject
-  console.log('📑 Creating chapters...');
-  const chaptersData: Record<string, string[]> = {
-    MATH: [
-      'Fractions & Decimals',
-      'The Triangle & Its Properties',
-      'Rational Numbers',
-      'Data Handling',
-      'Simple Equations',
-      'Exponents & Powers',
-      'Algebraic Expressions',
-      'Linear Equations',
-      'Geometry',
-      'Perimeter & Area',
-      'Lines & Angles',
-    ],
-    SCI: [
-      'Nutrition in Plants',
-      'Nutrition in Animals',
-      'Heat',
-      'Acids, Bases & Salts',
-      'Physical & Chemical Changes',
-      'Weather, Climate & Adaptations',
-      'Respiration in Organisms',
-      'Transportation in Animals & Plants',
-      'Reproduction in Plants',
-    ],
-    ENG: [
-      'Grammar Basics',
-      'Tenses',
-      'Active & Passive Voice',
-      'Direct & Indirect Speech',
-      'Comprehension',
-      'Essay Writing',
-      'Letter Writing',
-      'Creative Writing',
-    ],
-    HIST: [
-      'Ancient Civilizations',
-      'Medieval Period',
-      'Modern History',
-      'Indian Freedom Struggle',
-      'World Wars',
-      'Post-Independence India',
-    ],
-    GEO: [
-      'Our Environment',
-      'Natural Vegetation & Wildlife',
-      'Water Resources',
-      'Agriculture',
-      'Industries',
-      'Human Resources',
-    ],
-    PHY: [
-      'Motion',
-      'Force & Laws of Motion',
-      'Gravitation',
-      'Work & Energy',
-      'Sound',
-      'Light',
-      'Electricity',
-      'Magnetism',
-    ],
-    CHEM: [
-      'Matter in Our Surroundings',
-      'Is Matter Around Us Pure',
-      'Atoms & Molecules',
-      'Structure of Atom',
-      'Chemical Reactions',
-      'Periodic Table',
-    ],
-    BIO: [
-      'Cell Structure',
-      'Tissues',
-      'Diversity in Living Organisms',
-      'Life Processes',
-      'Control & Coordination',
-      'Heredity & Evolution',
-    ],
-  };
-
-  for (const [subjectCode, chapters] of Object.entries(chaptersData)) {
+  // Create grade-specific chapters from CBSE/NCERT reference
+  console.log('📑 Creating grade-specific chapters...');
+  let totalChapters = 0;
+  for (const [subjectCode, byGrade] of Object.entries(CHAPTER_GRADE_REFERENCE)) {
     const subject = subjects[subjectCode];
-    for (let i = 0; i < chapters.length; i++) {
-      await prisma.chapter.upsert({
-        where: {
-          id: `${subject.id}-chapter-${i + 1}`,
-        },
-        update: {},
-        create: {
-          id: `${subject.id}-chapter-${i + 1}`,
-          subjectId: subject.id,
-          name: chapters[i],
-          orderIndex: i + 1,
-        },
-      });
+    if (!subject) continue;
+    for (const [gradeStr, chapterNames] of Object.entries(byGrade)) {
+      const grade = parseInt(gradeStr, 10);
+      for (let i = 0; i < chapterNames.length; i++) {
+        const id = `${subject.id}-g${grade}-ch-${i + 1}`;
+        await prisma.chapter.upsert({
+          where: { id },
+          update: { name: chapterNames[i], orderIndex: i + 1 },
+          create: {
+            id,
+            subjectId: subject.id,
+            name: chapterNames[i],
+            orderIndex: i + 1,
+            grade,
+          },
+        });
+      }
+      totalChapters += chapterNames.length;
     }
-    console.log(`   ✓ ${subject.name}: ${chapters.length} chapters`);
+    const count = Object.values(byGrade).reduce((a, arr) => a + arr.length, 0);
+    console.log(`   ✓ ${subject.name}: ${count} chapters (grades 9-12)`);
   }
-  console.log('');
+  console.log(`   Total: ${totalChapters} chapters\n`);
 
   // Create Classes (Grades 1-12, Sections A-E)
   console.log('🏫 Creating classes...');

@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import SearchBar from "@/components/search-bar"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
@@ -42,6 +43,19 @@ export function QuizHeader({
     onClassChange,
     onSubjectChange
 }: QuizHeaderProps) {
+    // One class per grade (sections share same chapters); use first section for each grade
+    const classesByGrade = useMemo(() => {
+        if (!classes?.length) return []
+        const seen = new Set<number>()
+        return [...classes]
+            .sort((a, b) => a.grade - b.grade || a.section.localeCompare(b.section))
+            .filter((c) => {
+                if (seen.has(c.grade)) return false
+                seen.add(c.grade)
+                return true
+            })
+    }, [classes])
+
     return (
         <div className={`flex flex-col lg:flex-row lg:justify-between lg:items-center border-b border-gray-200 pb-4 lg:pb-6 gap-4 ${className || ""}`}>
             {/* Mobile Header */}
@@ -68,8 +82,8 @@ export function QuizHeader({
                             <SelectValue placeholder="Class" className="text-white placeholder:text-white" />
                         </SelectTrigger>
                         <SelectContent>
-                            {classes?.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>Class {c.grade}-{c.section}</SelectItem>
+                            {classesByGrade.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>Class {c.grade}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -104,9 +118,9 @@ export function QuizHeader({
                         <SelectValue placeholder="Select Class" className="text-white placeholder:text-white" />
                     </SelectTrigger>
                     <SelectContent>
-                        {classes?.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id}>
-                                Class {cls.grade}-{cls.section}
+                        {classesByGrade.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                                Class {c.grade}
                             </SelectItem>
                         ))}
                     </SelectContent>

@@ -6,8 +6,8 @@ import { Edit, Share2, Download, Printer, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFetch } from "@/hooks/use-api"
 import { useAuth } from "@/contexts/auth-context"
-import { downloadAssessmentPDF } from "@/lib/pdf-generator"
-import { downloadAssessmentDoc } from "@/lib/doc-generator"
+import { downloadAssessmentPDF, downloadAssessmentAnswerKeyPDF } from "@/lib/pdf-generator"
+import { downloadAssessmentDoc, downloadAssessmentAnswerKeyDoc } from "@/lib/doc-generator"
 import { normalizeScientificText } from "@/lib/scientific-text"
 import { DownloadDropdown } from "@/components/download-dropdown"
 import { getAppBaseUrl } from "@/lib/app-url"
@@ -110,6 +110,14 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
 
   const handleDownloadWord = useCallback(() => {
     if (assessment) downloadAssessmentDoc(assessment, user?.name || "")
+  }, [assessment, user?.name])
+
+  const handleAnswerKeyPDF = useCallback(() => {
+    if (assessment) downloadAssessmentAnswerKeyPDF(assessment, user?.name || "")
+  }, [assessment, user?.name])
+
+  const handleAnswerKeyWord = useCallback(() => {
+    if (assessment) downloadAssessmentAnswerKeyDoc(assessment, user?.name || "")
   }, [assessment, user?.name])
 
   // Share handler - fetches public share link and shares it
@@ -320,8 +328,8 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
         <div className="flex-shrink-0 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4 px-4 py-4">
-            {/* First Row: Print, Share */}
-            <div className="flex justify-start items-center gap-3">
+            {/* First Row: Print, Share, Answer Key */}
+            <div className="flex justify-start items-center gap-3 flex-wrap">
               <button
                 onClick={handlePrint}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm"
@@ -335,6 +343,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                 {linkCopied ? <Check size={18} /> : <Share2 size={18} />}
                 {linkCopied ? "Copied!" : "Share"}
               </button>
+              <DownloadDropdown
+                onDownloadPDF={handleAnswerKeyPDF}
+                onDownloadWord={handleAnswerKeyWord}
+                label="Answer Key"
+                className="bg-[#B595FF] hover:bg-[#A085EF] text-white border-0 rounded-xl font-semibold text-sm"
+              />
             </div>
             {/* Second Row: Modify Prompt and Download */}
             <div className="flex gap-3">
@@ -376,6 +390,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
               >
                 <Printer size={18} /> Print
               </button>
+              <DownloadDropdown
+                onDownloadPDF={handleAnswerKeyPDF}
+                onDownloadWord={handleAnswerKeyWord}
+                label="Answer Key"
+                className="bg-[#E2DFF0] border-0 text-gray-700 hover:bg-[#D5D2E3]"
+              />
             </div>
 
             <div className="flex items-center gap-1">

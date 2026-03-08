@@ -11,6 +11,7 @@ export default function CreateQuiz() {
     const { data: subjects } = useTeacherSubjectsData()
     const [selectedClassId, setSelectedClassId] = useState<string>("")
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("")
+    const selectedGrade = classes?.find((c) => c.id === selectedClassId)?.grade ?? null
 
     return (
         <div className="flex flex-col h-full p-4 lg:p-8">
@@ -27,6 +28,7 @@ export default function CreateQuiz() {
                 <QuizContent
                     selectedClassId={selectedClassId}
                     selectedSubjectId={selectedSubjectId}
+                    selectedGrade={selectedGrade}
                 />
             </div>
         </div>
