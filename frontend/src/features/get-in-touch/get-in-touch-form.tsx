@@ -51,12 +51,12 @@ function submitToMailchimp(data: {
 
     function cleanup() {
       clearTimeout(timeout)
-      delete (window as Record<string, unknown>)[callbackName]
+      delete (window as unknown as Record<string, unknown>)[callbackName]
       const scriptEl = document.getElementById(callbackName)
       if (scriptEl) scriptEl.remove()
     }
 
-    ;(window as Record<string, unknown>)[callbackName] = (response: MailchimpResponse) => {
+    ;(window as unknown as Record<string, unknown>)[callbackName] = (response: MailchimpResponse) => {
       cleanup()
       if (response.result === 'success') {
         resolve(response)
