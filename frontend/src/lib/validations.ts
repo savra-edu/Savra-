@@ -2,14 +2,15 @@ import { z } from 'zod'
 
 /**
  * Contact form validation schema
+ * Fields aligned with Mailchimp audience merge fields:
+ *   EMAIL, FNAME, PHONE, COMPANY (School Name), LNAME (Message)
  */
 export const contactFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100, 'First name is too long'),
-  lastName: z.string().min(1, 'Last name is required').max(100, 'Last name is too long'),
   email: z.string().email('Invalid email address').min(1, 'Email is required'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits').max(20, 'Phone number is too long').optional().or(z.literal('')),
-  subject: z.string().min(1, 'Subject is required').max(200, 'Subject is too long'),
-  message: z.string().min(10, 'Message must be at least 10 characters').max(2000, 'Message is too long'),
+  phone: z.string().min(1, 'Phone number is required').max(20, 'Phone number is too long'),
+  schoolName: z.string().max(200, 'School name is too long').optional().or(z.literal('')),
+  message: z.string().max(2000, 'Message is too long').optional().or(z.literal('')),
 })
 
 /**
