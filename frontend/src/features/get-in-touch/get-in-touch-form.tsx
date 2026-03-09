@@ -2,25 +2,102 @@
 
 import React from "react"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Mail, Phone, MapPin, PhoneCall, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import Footers from "../footers"
 
-export default function GetInTouchForm() {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    subject: 'General Inquiry',
-    message: ''
-  })
+const MAILCHIMP_URL = 'https://savraedu.us2.list-manage.com/subscribe/post-json'
+const MAILCHIMP_U = '8cc0c6a14bfeab346fa932e6a'
+const MAILCHIMP_ID = '78a858c801'
+const MAILCHIMP_F_ID = '00366ae3f0'
+const MAILCHIMP_HONEYPOT_NAME = `b_${MAILCHIMP_U}_${MAILCHIMP_ID}`
 
+interface MailchimpResponse {
+  result: 'success' | 'error'
+  msg: string
+}
+
+/**
+ * Submit contact data to Mailchimp via JSONP.
+ * Uses their post-json endpoint with a dynamic script tag to avoid CORS issues.
+ */
+function submitToMailchimp(data: {
+  email: string
+  firstName: string
+  phone: string
+  schoolName: string
+  message: string
+}): Promise<MailchimpResponse> {
+  return new Promise((resolve, reject) => {
+    const callbackName = `mc_cb_${Date.now()}`
+
+    const params = new URLSearchParams({
+      u: MAILCHIMP_U,
+      id: MAILCHIMP_ID,
+      f_id: MAILCHIMP_F_ID,
+      c: callbackName,
+      EMAIL: data.email,
+      FNAME: data.firstName,
+      PHONE: data.phone,
+      COMPANY: data.schoolName,
+      LNAME: data.message,
+      [MAILCHIMP_HONEYPOT_NAME]: '',
+    })
+
+    const timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error('Mailchimp request timed out'))
+    }, 10000)
+
+    function cleanup() {
+      clearTimeout(timeout)
+      delete (window as unknown as Record<string, unknown>)[callbackName]
+      const scriptEl = document.getElementById(callbackName)
+      if (scriptEl) scriptEl.remove()
+    }
+
+    ;(window as unknown as Record<string, unknown>)[callbackName] = (response: MailchimpResponse) => {
+      cleanup()
+      if (response.result === 'success') {
+        resolve(response)
+      } else {
+        reject(response)
+      }
+    }
+
+    const script = document.createElement('script')
+    script.id = callbackName
+    script.src = `${MAILCHIMP_URL}?${params.toString()}`
+    script.onerror = () => {
+      cleanup()
+      reject(new Error('Failed to reach Mailchimp'))
+    }
+    document.head.appendChild(script)
+  })
+}
+
+interface FormData {
+  firstName: string
+  email: string
+  phone: string
+  schoolName: string
+  message: string
+}
+
+const INITIAL_FORM_DATA: FormData = {
+  firstName: '',
+  email: '',
+  phone: '',
+  schoolName: '',
+  message: '',
+}
+
+export default function GetInTouchForm() {
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Auto-dismiss success message after 5 seconds
   useEffect(() => {
     if (submitStatus === 'success') {
       const timer = setTimeout(() => {
@@ -38,65 +115,76 @@ export default function GetInTouchForm() {
     }))
   }
 
-  const handleSubjectChange = (subject: string) => {
-    setFormData(prev => ({
-      ...prev,
-      subject
-    }))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Reset previous status
     setSubmitStatus('idle')
     setErrorMessage(null)
     setIsSubmitting(true)
 
+    let apiOk = false
+    let mailchimpOk = false
+    let localError: string | null = null
+
+    // 1. Submit to our API (Google Sheets + admin email)
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
 
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // Success - show success message and reset form
-        setSubmitStatus('success')
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          subject: 'General Inquiry',
-          message: ''
-        })
+        apiOk = true
+      } else if (data.details && Array.isArray(data.details)) {
+        localError = data.details
+          .map((err: { field: string; message: string }) => `${err.field}: ${err.message}`)
+          .join(', ')
       } else {
-        // Error - show error message
-        setSubmitStatus('error')
+        localError = data.error || 'Something went wrong. Please try again.'
+      }
+    } catch {
+      console.error('API submission failed — will try Mailchimp')
+    }
 
-        // Handle validation errors with field details
-        if (data.details && Array.isArray(data.details)) {
-          const fieldMessages = data.details.map((err: { field: string; message: string }) =>
-            `${err.field}: ${err.message}`
-          ).join(', ')
-          setErrorMessage(fieldMessages)
-        } else {
-          setErrorMessage(data.error || 'Something went wrong. Please try again.')
+    // 2. Submit to Mailchimp (JSONP)
+    try {
+      await submitToMailchimp({
+        email: formData.email,
+        firstName: formData.firstName,
+        phone: formData.phone,
+        schoolName: formData.schoolName,
+        message: formData.message,
+      })
+      mailchimpOk = true
+    } catch (mcError) {
+      const mcResponse = mcError as MailchimpResponse | Error
+      if ('msg' in mcResponse && mcResponse.msg) {
+        const alreadySubscribed = mcResponse.msg.toLowerCase().includes('already subscribed')
+        if (alreadySubscribed) {
+          mailchimpOk = true
+        } else if (!apiOk) {
+          localError = mcResponse.msg.replace(/<[^>]*>/g, '')
         }
       }
-    } catch (error) {
-      console.error('Form submission error:', error)
-      setSubmitStatus('error')
-      setErrorMessage('Network error. Please check your connection and try again.')
-    } finally {
-      setIsSubmitting(false)
+      if (!mailchimpOk) {
+        console.error('Mailchimp submission failed:', mcError)
+      }
     }
-  }
+
+    if (apiOk || mailchimpOk) {
+      setSubmitStatus('success')
+      setErrorMessage(null)
+      setFormData(INITIAL_FORM_DATA)
+    } else {
+      setSubmitStatus('error')
+      setErrorMessage(localError || 'Submission failed. Please check your details and try again.')
+    }
+
+    setIsSubmitting(false)
+  }, [formData])
 
   return (
     <div className="w-full mx-auto">
@@ -189,91 +277,70 @@ export default function GetInTouchForm() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-              {/* Name Row */}
+              {/* Row 1: First Name + Email */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="text-gray-700 text-sm font-medium block mb-2">
-                    First Name
+                    First Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
+                    required
                     placeholder="John"
                     className="w-full border-b border-gray-400 bg-transparent py-2 text-black placeholder-gray-500 focus:outline-none focus:border-gray-700"
                   />
                 </div>
                 <div>
                   <label className="text-gray-700 text-sm font-medium block mb-2">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    placeholder="Doe"
-                    className="w-full border-b border-gray-400 bg-transparent py-2 text-black placeholder-gray-500 focus:outline-none focus:border-gray-700"
-                  />
-                </div>
-              </div>
-
-              {/* Email and Phone Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div>
-                  <label className="text-gray-700 text-sm font-medium block mb-2">
-                    Email
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
+                    required
                     placeholder="your@email.com"
                     className="w-full border-b border-gray-400 bg-transparent py-2 text-black placeholder-gray-500 focus:outline-none focus:border-gray-700"
                   />
                 </div>
+              </div>
+
+              {/* Row 2: Phone + School Name */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label className="text-gray-700 text-sm font-medium block mb-2">
-                    Phone Number
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    placeholder="+1 (555) 000-0000"
+                    required
+                    placeholder="+91 00000 00000"
+                    className="w-full border-b border-gray-400 bg-transparent py-2 text-black placeholder-gray-500 focus:outline-none focus:border-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-700 text-sm font-medium block mb-2">
+                    School Name
+                  </label>
+                  <input
+                    type="text"
+                    name="schoolName"
+                    value={formData.schoolName}
+                    onChange={handleInputChange}
+                    placeholder="Your school name"
                     className="w-full border-b border-gray-400 bg-transparent py-2 text-black placeholder-gray-500 focus:outline-none focus:border-gray-700"
                   />
                 </div>
               </div>
 
-              {/* Subject Selection */}
-              <div>
-                <label className="text-gray-900 text-sm font-semibold block mb-3">
-                  Select Subject?
-                </label>
-                <div className="flex flex-wrap gap-3 md:gap-4">
-                  {['General Inquiry', 'Support', 'Sales'].map((subject) => (
-                    <label key={subject} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="subject"
-                        value={subject}
-                        checked={formData.subject === subject}
-                        onChange={() => handleSubjectChange(subject)}
-                        className="w-4 h-4 accent-gray-900"
-                      />
-                      <span className="text-gray-700 text-sm">
-                        {subject}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Message */}
+              {/* Row 3: Message */}
               <div>
                 <label className="text-gray-700 text-sm font-medium block mb-2">
                   Message
@@ -285,6 +352,16 @@ export default function GetInTouchForm() {
                   placeholder="Write your message.."
                   rows={4}
                   className="w-full border-b border-gray-400 bg-transparent py-2 text-black placeholder-gray-500 focus:outline-none focus:border-gray-700 resize-none"
+                />
+              </div>
+
+              {/* Mailchimp honeypot — hidden from real users, catches bots */}
+              <div aria-hidden="true" style={{ position: 'absolute', left: '-5000px' }}>
+                <input
+                  type="text"
+                  name={MAILCHIMP_HONEYPOT_NAME}
+                  tabIndex={-1}
+                  defaultValue=""
                 />
               </div>
 
