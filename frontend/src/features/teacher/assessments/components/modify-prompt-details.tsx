@@ -31,6 +31,17 @@ const QUESTION_PAPER_SUGGESTIONS = [
   "Add more MCQs",
 ]
 
+const QUESTION_TYPE_DISPLAY_NAMES: Record<string, string> = {
+  mcq: "MCQs",
+  short_answer: "Short Answer",
+  long_answer: "Long Answer",
+  case_study: "Case Study",
+  assertion_reasoning: "Assertion Reasoning",
+  fill_in_blanks: "Fill In The Blanks",
+  problem_solving: "Problem Solving",
+  diagram_based: "Diagram Based",
+}
+
 const SUGGESTED_CHAPTERS = [
   "Fractions & Decimals",
   "The Triangle & Its Properties",
@@ -256,7 +267,7 @@ export default function ModifyPromptDetails() {
               <div className="space-y-4">
                 {questionTypes.map((type, index) => (
                   <div key={type.name} className="space-y-2">
-                    <p className="text-base font-medium text-[#6A6A6A]">{type.name}</p>
+                    <p className="text-base font-medium text-[#6A6A6A]">{QUESTION_TYPE_DISPLAY_NAMES[type.name] || type.name}</p>
                     <div className="flex gap-1">
                       <div className="flex-1">
                         <label className="block text-sm font-medium text-[#6A6A6A] mb-1">No. of Questions</label>
@@ -408,7 +419,7 @@ export default function ModifyPromptDetails() {
               <div className="grid grid-cols-2 gap-4">
                 {questionTypes.map((type, index) => (
                   <div key={index}>
-                    <span className="text-sm font-medium text-[#6A6A6A] block mb-2">{type.name}</span>
+                    <span className="text-sm font-medium text-[#6A6A6A] block mb-2">{QUESTION_TYPE_DISPLAY_NAMES[type.name] || type.name}</span>
                     <div className="flex gap-1">
                       <Input
                         value={type.numQuestions}

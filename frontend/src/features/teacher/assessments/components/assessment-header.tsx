@@ -49,6 +49,7 @@ export function AssessmentHeader({ className }: AssessmentHeaderProps) {
                         placeholder="Class"
                         classes={classes || undefined}
                         className="w-[90px] h-8 text-xs bg-[#9B61FF] text-white font-medium"
+                        variant="simple"
                     />
                 </div>
             </div>
@@ -71,6 +72,7 @@ export function AssessmentHeader({ className }: AssessmentHeaderProps) {
                     onValueChange={setClassValue}
                     placeholder="Select class"
                     classes={classes || undefined}
+                    variant="simple"
                 />
             </div>
         </div>
