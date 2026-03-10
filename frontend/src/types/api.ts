@@ -6,8 +6,10 @@ export interface User {
   role: 'teacher' | 'student' | 'admin';
   avatarUrl?: string;
   onboardingCompleted?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  /** Present when user comes from /auth/me - indicates OAuth vs password auth */
+  authMethod?: 'password' | 'google';
 }
 
 export interface TeacherProfile extends User {

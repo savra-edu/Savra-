@@ -9,6 +9,7 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { googleLogout } from '@react-oauth/google';
 import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT } from '@/lib/api';
 import type { User, LoginRequest, LoginResponse, ApiResponse } from '@/types/api';
 
@@ -27,6 +28,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
+  loginWithGoogle: (credential: string, role: 'teacher') => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -94,6 +96,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push(redirectMap[user.role] || '/');
   };
 
+  const loginWithGoogle = async (credential: string, role: 'teacher') => {
+    const response = await api.post<LoginResponse>('/auth/google', {
+      credential,
+      role,
+    });
+    setTokens(response.data.accessToken, response.data.refreshToken);
+    setUser(response.data.user);
+
+    const loggedInUser = response.data.user;
+
+    if (loggedInUser.role === 'teacher' && !loggedInUser.onboardingCompleted) {
+      router.push('/home?setup=true');
+      return;
+    }
+
+    const redirectMap: Record<string, string> = {
+      teacher: '/home',
+      student: '/student-home',
+      admin: '/admin-dashboard',
+    };
+    router.push(redirectMap[loggedInUser.role] || '/');
+  };
+
   const register = async (data: RegisterRequest) => {
     const response = await api.post<LoginResponse>('/auth/register', data);
     setTokens(response.data.accessToken, response.data.refreshToken);
@@ -121,6 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore logout errors - we still want to clear local state
     }
+    try {
+      googleLogout();
+    } catch {
+      // Ignore if Google OAuth not initialized
+    }
     clearTokens();
     setUser(null);
     router.push('/teacher/login');
@@ -143,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
+        loginWithGoogle,
         register,
         logout,
         refreshUser,
