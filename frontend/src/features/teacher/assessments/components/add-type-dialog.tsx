@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 
 const DIALOG_TO_INTERNAL: Record<string, string> = {
+  "Assertion Reasoning": "assertion_reasoning",
   "Diagram-Based Questions": "diagram_based",
   "Fill in the Blanks": "fill_in_blanks",
   "Numerical / Problem Solving": "problem_solving",
@@ -32,6 +33,7 @@ export default function AddTypeDialog({ open: controlledOpen, onOpenChange, onAd
   const setOpen = onOpenChange || setInternalOpen
 
   const allQuestionTypes = [
+    "Assertion Reasoning",
     "Diagram-Based Questions",
     "Fill in the Blanks",
     "Numerical / Problem Solving",

@@ -140,7 +140,7 @@ export default function DashboardPage() {
                 return (
                   <TaskCard
                     key={quiz.id}
-                    href={`/quiz/${quiz.id}`}
+                    href={`/quizzes/${quiz.id}`}
                     badge={badgeInfo.badge}
                     badgeColor={badgeInfo.badgeColor}
                     title={`${quiz.subject.name}- ${quiz.title}`}

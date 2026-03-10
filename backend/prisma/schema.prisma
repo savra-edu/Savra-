@@ -41,6 +41,7 @@ enum QuestionType {
   short_answer
   long_answer
   case_study
+  assertion_reasoning
 }
 
 enum AttemptStatus {

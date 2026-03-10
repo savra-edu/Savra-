@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // Question type schema for assessment
 const questionTypeSchema = z.object({
-  questionType: z.enum(['mcq', 'short_answer', 'long_answer', 'case_study']),
+  questionType: z.enum(['mcq', 'short_answer', 'long_answer', 'case_study', 'assertion_reasoning']),
   numberOfQuestions: z.number().min(1, 'At least 1 question required').max(50, 'Cannot exceed 50 questions'),
   marksPerQuestion: z.number().min(1, 'Marks must be at least 1').max(20, 'Marks cannot exceed 20'),
 });

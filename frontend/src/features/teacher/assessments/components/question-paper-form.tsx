@@ -46,6 +46,7 @@ const QUESTION_TYPE_DISPLAY_NAMES: Record<string, string> = {
   short_answer: "Short Answer",
   long_answer: "Long Answer",
   case_study: "Case study",
+  assertion_reasoning: "Assertion Reasoning",
   fill_in_blanks: "Fill In The Blanks",
   problem_solving: "Problem Solving",
   diagram_based: "Diagram Based",
@@ -196,6 +197,7 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
 
   const handleAddQuestionTypes = (typeNames: string[]) => {
     const dialogToInternal: Record<string, string> = {
+      "Assertion Reasoning": "assertion_reasoning",
       "Diagram-Based Questions": "diagram_based",
       "Fill in the Blanks": "fill_in_blanks",
       "Numerical / Problem Solving": "problem_solving",

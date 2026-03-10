@@ -861,12 +861,13 @@ Question distribution: ${typesDescription}${objectiveText}${pdfReferenceText}
 IMPORTANT REQUIREMENTS:
 1. Number questions SEQUENTIALLY across ALL sections (1, 2, 3, 4, 5... not 1, 11, 21).
 2. For MCQ options, do NOT include letter prefixes - just the option text.
-3. For Science/Chemistry/Physics: Write chemical formulas and equations using PLAIN ASCII digits for subscripts (e.g., HNO3, KClO3, H2O, XeF2) - do NOT use Unicode subscript characters. Always provide COMPLETE equations including all products, and COMPLETE atomic mass lists (e.g., "H=1 u, N=14 u, O=16 u") - never truncate.
-3b. For Mathematics: Write all math notation in PLAIN ASCII - use sin^-1(x) not sin⁻¹(x), x^2 not x², d2y/dx2 not d²y/dx², write "integral" for ∫, "pi" for π, <= for ≤, >= for ≥. Never truncate equations.
-4. You MUST use these EXACT general instructions for ${subject} (from CBSE Assessment Template):
+3. For assertion_reasoning type: Each question MUST have an Assertion (Statement 1) and a Reason (Statement 2). Use the standard CBSE format with exactly 5 options: (a) Both Assertion and Reason are true and Reason is the correct explanation of Assertion, (b) Both Assertion and Reason are true but Reason is NOT the correct explanation of Assertion, (c) Assertion is true but Reason is false, (d) Assertion is false but Reason is true, (e) Both Assertion and Reason are false. Format the question text as "Assertion: [statement]. Reason: [statement]." and include the 5 options in the options array.
+4. For Science/Chemistry/Physics: Write chemical formulas and equations using PLAIN ASCII digits for subscripts (e.g., HNO3, KClO3, H2O, XeF2) - do NOT use Unicode subscript characters. Always provide COMPLETE equations including all products, and COMPLETE atomic mass lists (e.g., "H=1 u, N=14 u, O=16 u") - never truncate.
+5. For Mathematics: Write all math notation in PLAIN ASCII - use sin^-1(x) not sin⁻¹(x), x^2 not x², d2y/dx2 not d²y/dx², write "integral" for ∫, "pi" for π, <= for ≤, >= for ≥. Never truncate equations.
+6. You MUST use these EXACT general instructions for ${subject} (from CBSE Assessment Template):
 ${subjectInstructions.map((inst, i) => `   ${i + 1}. ${inst}`).join('\n')}
 
-5. Never truncate or cut off chemical equations, mathematical expressions, or data lists mid-sentence.
+7. Never truncate or cut off chemical equations, mathematical expressions, or data lists mid-sentence.
 
 Return a JSON object with this structure:
 {
@@ -887,6 +888,14 @@ Return a JSON object with this structure:
       "instructions": "Answer in 2-3 sentences.",
       "questions": [
         { "number": 3, "text": "Question text?", "marks": 2, "answer": "A concise model answer." }
+      ]
+    },
+    {
+      "type": "assertion_reasoning",
+      "title": "Section - Assertion and Reason",
+      "instructions": "Choose the correct option for each question.",
+      "questions": [
+        { "number": 4, "text": "Assertion: [Statement 1]. Reason: [Statement 2].", "options": ["Both Assertion and Reason are true and Reason is the correct explanation of Assertion", "Both Assertion and Reason are true but Reason is NOT the correct explanation of Assertion", "Assertion is true but Reason is false", "Assertion is false but Reason is true", "Both Assertion and Reason are false"], "marks": 1, "answer": "Both Assertion and Reason are true and Reason is the correct explanation of Assertion" }
       ]
     }
   ]
