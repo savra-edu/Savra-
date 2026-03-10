@@ -142,7 +142,7 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
       difficultyLevel: (quiz.level?.toLowerCase() as 'easy' | 'medium' | 'hard') || 'medium',
       totalQuestions: quiz.numQuestions || quiz.questions?.length || 0,
       totalMarks: quiz.totalMarks || quiz.numQuestions || quiz.questions?.length || 0,
-      status: quiz.status as 'draft' | 'saved' | 'published',
+      status: quiz.status as 'generated' | 'draft' | 'saved' | 'published',
       isOptional: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

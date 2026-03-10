@@ -17,12 +17,14 @@ enum Role {
 }
 
 enum LessonStatus {
+  generated
   draft
   saved
   published
 }
 
 enum QuizStatus {
+  generated
   draft
   saved
   published

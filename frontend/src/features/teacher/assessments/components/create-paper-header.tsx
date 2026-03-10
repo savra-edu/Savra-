@@ -71,16 +71,6 @@ export function CreatePaperHeader({
                     <h1 className="text-xl font-bold text-[#242220] ml-3">Question Paper</h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange} disabled={isSubjectsLoading || !subjects?.length}>
-                        <SelectTrigger className="w-[80px] h-8 text-xs border-[#9B61FF] bg-white text-[#9B61FF] font-medium">
-                            <SelectValue placeholder={isSubjectsLoading ? "Loading..." : "Subject"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {subjects?.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                     <Select value={selectedClassId || undefined} onValueChange={onClassChange} disabled={isClassesLoading || !classesByGrade.length}>
                         <SelectTrigger className="w-[90px] h-8 text-xs bg-[#9B61FF] text-white font-medium border-[#9B61FF] [&_span]:text-white [&_svg]:!text-white [&_svg]:!opacity-100">
                             <SelectValue placeholder={isClassesLoading ? "Loading..." : "Class"} className="text-white placeholder:text-white" />
@@ -88,6 +78,16 @@ export function CreatePaperHeader({
                         <SelectContent>
                             {classesByGrade.map((c) => (
                                 <SelectItem key={c.id} value={c.id}>Class {c.grade}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange} disabled={isSubjectsLoading || !subjects?.length}>
+                        <SelectTrigger className="w-[80px] h-8 text-xs border-[#9B61FF] bg-white text-[#9B61FF] font-medium">
+                            <SelectValue placeholder={isSubjectsLoading ? "Loading..." : "Subject"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {subjects?.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -103,19 +103,6 @@ export function CreatePaperHeader({
             </div>
             <div className="hidden lg:flex items-center gap-4">
                 <SearchBar />
-                {/* Subject Dropdown */}
-                <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange} disabled={isSubjectsLoading || !subjects?.length}>
-                    <SelectTrigger className="w-[120px] h-14 p-2 bg-white text-[#353535] font-medium border-0">
-                        <SelectValue placeholder={isSubjectsLoading ? "Loading..." : "Select Subject"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {subjects?.map((subject) => (
-                            <SelectItem key={subject.id} value={subject.id}>
-                                {subject.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
                 {/* Class Dropdown */}
                 <Select value={selectedClassId || undefined} onValueChange={onClassChange} disabled={isClassesLoading || !classesByGrade.length}>
                     <SelectTrigger className="w-[150px] h-10 p-2 bg-[#9B61FF] text-white font-semibold border-0 hover:bg-[#8B51EF] [&_span]:text-white [&_svg]:!text-white [&_svg]:!opacity-100">
@@ -125,6 +112,19 @@ export function CreatePaperHeader({
                         {classesByGrade.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                                 Class {c.grade}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {/* Subject Dropdown */}
+                <Select value={selectedSubjectId || undefined} onValueChange={onSubjectChange} disabled={isSubjectsLoading || !subjects?.length}>
+                    <SelectTrigger className="w-[120px] h-14 p-2 bg-white text-[#353535] font-medium border-0">
+                        <SelectValue placeholder={isSubjectsLoading ? "Loading..." : "Select Subject"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {subjects?.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                                {subject.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

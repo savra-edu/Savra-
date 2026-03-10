@@ -33,14 +33,6 @@ export function LessonPlanHeader({
             <div className="lg:hidden flex items-center justify-between w-full">
                 <h1 className="text-xl font-bold text-[#242220]">Create Lesson Plan</h1>
                 <div className="flex items-center gap-2">
-                    <SubjectSelect
-                        value={subject}
-                        onValueChange={onSubjectChange}
-                        placeholder={isSubjectsLoading ? "Loading..." : "Subject"}
-                        subjects={subjects || undefined}
-                        disabled={isSubjectsLoading || !subjects?.length}
-                        className="w-[80px] h-8 text-xs border-[#9B61FF] bg-white text-[#9B61FF] font-medium"
-                    />
                     <ClassSelect
                         value={classValue}
                         onValueChange={onClassChange}
@@ -48,6 +40,15 @@ export function LessonPlanHeader({
                         classes={classes || undefined}
                         disabled={isClassesLoading || !classes?.length}
                         className="w-[90px] h-8 text-xs bg-[#9B61FF] text-white font-medium"
+                        variant="simple"
+                    />
+                    <SubjectSelect
+                        value={subject}
+                        onValueChange={onSubjectChange}
+                        placeholder={isSubjectsLoading ? "Loading..." : "Subject"}
+                        subjects={subjects || undefined}
+                        disabled={isSubjectsLoading || !subjects?.length}
+                        className="w-[80px] h-8 text-xs border-[#9B61FF] bg-white text-[#9B61FF] font-medium"
                     />
                 </div>
             </div>
@@ -58,19 +59,20 @@ export function LessonPlanHeader({
             </div>
             <div className="hidden lg:flex items-center gap-4">
                 <SearchBar />
-                <SubjectSelect
-                    value={subject}
-                    onValueChange={onSubjectChange}
-                    placeholder={isSubjectsLoading ? "Loading..." : "Select subject"}
-                    subjects={subjects || undefined}
-                    disabled={isSubjectsLoading || !subjects?.length}
-                />
                 <ClassSelect
                     value={classValue}
                     onValueChange={onClassChange}
                     placeholder={isClassesLoading ? "Loading..." : "Select class"}
                     classes={classes || undefined}
                     disabled={isClassesLoading || !classes?.length}
+                    variant="simple"
+                />
+                <SubjectSelect
+                    value={subject}
+                    onValueChange={onSubjectChange}
+                    placeholder={isSubjectsLoading ? "Loading..." : "Select subject"}
+                    subjects={subjects || undefined}
+                    disabled={isSubjectsLoading || !subjects?.length}
                 />
             </div>
         </div>

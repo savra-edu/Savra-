@@ -26,6 +26,7 @@ import { useFetch, useMutation } from "@/hooks/use-api"
 import { useSubjects } from "@/hooks/use-subjects"
 import { useSchoolClasses } from "@/hooks/use-classes"
 import { useAuth } from "@/contexts/auth-context"
+import { useData } from "@/contexts/data-context"
 import { api } from "@/lib/api"
 
 interface ClassData {
@@ -56,6 +57,7 @@ interface TeacherProfile {
 function UserProfileContent() {
   const router = useRouter()
   const { logout } = useAuth()
+  const { refetchTeacherData } = useData()
 
   // Fetch profile from API
   const { data: profile, isLoading: profileLoading, refetch } = useFetch<TeacherProfile>("/teacher/profile")
@@ -90,13 +92,16 @@ function UserProfileContent() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  // Populate form when profile loads
+  // Populate form when profile loads (only classes from grades 6-12)
   useEffect(() => {
     if (profile) {
       setName(profile.name || "")
       setEmail(profile.email || "")
       setSubjects(profile.subjects || [])
-      setSelectedClassIds(profile.classes?.map(c => c.id) || [])
+      const profileClassIds = (profile.classes || [])
+        .filter((c) => c.grade >= 6)
+        .map((c) => c.id)
+      setSelectedClassIds(profileClassIds)
       setLocation(profile.school?.address || "")
     }
   }, [profile])
@@ -118,9 +123,10 @@ function UserProfileContent() {
     setShowClassDropdown(false)
   }
 
-  // Get selected class objects for display
-  const selectedClasses = schoolClasses?.filter(c => selectedClassIds.includes(c.id)) || []
-  const availableClasses = schoolClasses?.filter(c => !selectedClassIds.includes(c.id)) || []
+  // Get selected class objects for display (grades 6-12 only)
+  const classesGrades6Plus = schoolClasses?.filter((c) => c.grade >= 6) || []
+  const selectedClasses = classesGrades6Plus.filter((c) => selectedClassIds.includes(c.id))
+  const availableClasses = classesGrades6Plus.filter((c) => !selectedClassIds.includes(c.id))
 
   const addSubject = (subject: string) => {
     if (!subjects.includes(subject)) {
@@ -132,15 +138,19 @@ function UserProfileContent() {
   const handleSave = async () => {
     setSaveSuccess(false)
     setSaveError(null)
+    const validClassIds = selectedClassIds.filter((id) =>
+      classesGrades6Plus.some((c) => c.id === id)
+    )
 
     try {
       await api.put("/teacher/profile", {
         name,
         email,
         subjects,
-        classIds: selectedClassIds,
+        classIds: validClassIds,
       })
-      await refetch() // Refresh profile data
+      // Refresh both profile data and cached teacher subjects/classes used across the app
+      await Promise.all([refetch(), refetchTeacherData()])
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Edit, Share2, Download, Printer, Check } from "lucide-react"
+import { Edit, Share2, Download, Printer, Check, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFetch } from "@/hooks/use-api"
 import { useAuth } from "@/contexts/auth-context"
@@ -73,6 +73,20 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
 
   const handleModifyPrompt = () => {
     router.push(`/assessments/create/modify?id=${assessmentId}`)
+  }
+
+  const handleSaveDraft = async () => {
+    if (!assessmentId) return
+    setIsSaving(true)
+    try {
+      await api.patch(`/assessments/${assessmentId}/status`, { status: "draft" })
+      await refetch()
+    } catch (err) {
+      console.error("Failed to save draft:", err)
+      alert(err instanceof Error ? err.message : "Failed to save draft")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleEditToggle = () => {
@@ -328,13 +342,20 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
         <div className="flex-shrink-0 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4 px-4 py-4">
-            {/* First Row: Print, Share, Answer Key */}
+            {/* First Row: Print, Save draft, Share, Answer Key */}
             <div className="flex justify-start items-center gap-3 flex-wrap">
               <button
                 onClick={handlePrint}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm"
               >
                 <Printer size={18} /> Print
+              </button>
+              <button
+                onClick={handleSaveDraft}
+                disabled={isSaving}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm disabled:opacity-50"
+              >
+                <FileText size={18} /> {isSaving ? "Saving..." : "Save draft"}
               </button>
               <button
                 onClick={handleShare}
@@ -389,6 +410,13 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                 className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium hover:bg-[#D5D2E3]"
               >
                 <Printer size={18} /> Print
+              </button>
+              <button
+                onClick={handleSaveDraft}
+                disabled={isSaving}
+                className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium disabled:opacity-50 hover:bg-[#D5D2E3]"
+              >
+                <FileText size={18} /> {isSaving ? "Saving..." : "Save draft"}
               </button>
               <DownloadDropdown
                 onDownloadPDF={handleAnswerKeyPDF}

@@ -19,9 +19,9 @@ interface AdminFilterBarProps {
   defaultSubject?: string
 }
 
-// Generate grades 1-12, each with sections A-E
-const gradeStructure = Array.from({ length: 12 }, (_, i) => ({
-  grade: i + 1,
+// Generate grades 6-12, each with sections A-E
+const gradeStructure = Array.from({ length: 7 }, (_, i) => ({
+  grade: i + 6,
   sections: ['A', 'B', 'C', 'D', 'E']
 }))
 

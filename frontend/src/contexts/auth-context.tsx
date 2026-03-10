@@ -9,7 +9,7 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, setTokens, clearTokens, getToken } from '@/lib/api';
+import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT } from '@/lib/api';
 import type { User, LoginRequest, LoginResponse, ApiResponse } from '@/types/api';
 
 interface RegisterRequest {
@@ -61,6 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Handle session expired (e.g. refresh token failed) — clear user so AuthGuard redirects
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      clearTokens();
+      setUser(null);
+    };
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, []);
 
   const login = async (credentials: LoginRequest) => {
     const response = await api.post<LoginResponse>('/auth/login', credentials);

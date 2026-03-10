@@ -52,4 +52,40 @@ export const CHAPTER_GRADE_REFERENCE: Record<string, Record<number, string[]>> =
     9: ["Matter in Our Surroundings", "Is Matter Around Us Pure", "Atoms and Molecules", "Structure of the Atom", "The Fundamental Unit of Life", "Tissues", "Diversity in Living Organisms", "Motion", "Force and Laws of Motion", "Gravitation", "Work and Energy", "Sound", "Why Do We Fall Ill", "Natural Resources", "Improvement in Food Resources"],
     10: ["Chemical Reactions and Equations", "Acids, Bases and Salts", "Metals and Non-metals", "Carbon and its Compounds", "Periodic Classification of Elements", "Life Processes", "Control and Coordination", "How do Organisms Reproduce?", "Heredity and Evolution", "Light – Reflection and Refraction", "The Human Eye and the Colourful World", "Electricity", "Magnetic Effects of Electric Current", "Sources of Energy", "Our Environment", "Management of Natural Resources"],
   },
+  ECO: {
+    11: ["Indian Economy on the Eve of Independence", "Indian Economy (1950–1990)", "Liberalisation, Privatisation and Globalisation: An Appraisal", "Poverty", "Human Capital Formation in India", "Rural Development", "Employment: Growth, Informalisation and Other Issues", "Infrastructure", "Environment and Sustainable Development", "Comparative Development Experiences of India and its Neighbours", "Introduction", "Collection of Data", "Organisation of Data", "Presentation of Data", "Measures of Central Tendency", "Measures of Dispersion", "Correlation", "Index Numbers"],
+    12: ["National Income and Related Aggregates", "Money and Banking", "Determination of Income and Employment", "Government Budget and Economy", "Balance of Payments", "Development Experience (1947–1990) and Economic Reforms since 1991", "Current Challenges facing Indian Economy", "Development Experience of India – A Comparison with Neighbours"],
+  },
+  POL: {
+    11: ["Constitution: Why and How?", "Rights in the Indian Constitution", "Election and Representation", "Executive", "Legislature", "Judiciary", "Federalism", "Local Governments", "Constitution as a Living Document", "Political Theory: An Introduction", "Freedom", "Equality", "Social Justice", "Rights", "Citizenship", "Nationalism", "Secularism", "Peace", "Development"],
+    12: ["The End of Bipolarity", "Contemporary Centres of Power", "Contemporary South Asia", "International Organisations", "Security in the Contemporary World", "Environment and Natural Resources", "Globalisation", "Challenges of Nation-Building", "Era of One-Party Dominance", "Politics of Planned Development", "India's External Relations", "Recent Developments in Indian Politics"],
+  },
+  ACC: {
+    11: ["Introduction to Accounting", "Theory Base of Accounting", "Recording of Transactions – I", "Recording of Transactions – II", "Bank Reconciliation Statement", "Trial Balance and Rectification of Errors", "Depreciation, Provisions and Reserves", "Bills of Exchange", "Financial Statements – I", "Financial Statements – II"],
+    12: ["Accounting for Partnership Firms", "Reconstitution of Partnership: Admission of a Partner", "Reconstitution of Partnership: Retirement/Death of a Partner", "Dissolution of Partnership Firm", "Accounting for Share Capital", "Issue and Redemption of Debentures", "Analysis of Financial Statements", "Cash Flow Statement", "Project Work", "Practical File"],
+  },
+  HMUS: {
+    11: ["हिंदुस्तानी संगीत की उत्पत्ति एवं विकास", "स्वर, श्रुति एवं सप्तक", "ठाठ एवं राग", "राग का लक्षण", "ताल एवं लय", "हिंदुस्तानी संगीत की शास्त्रीय गायन शैलियाँ", "संगीत की लिपि पद्धति", "भारतीय लोक संगीत"],
+    12: ["History and Development of Hindustani Music", "Expanded Swara, Shruti, Saptak Concepts", "Raga and Its Elaborations", "Advanced Lakshana of Ragas", "Expanded Tala and Laya Studies", "Classical Music Forms", "Notation and Composition Practices", "Folk and Regional Traditions"],
+  },
+  IP: {
+    11: ["Introduction to Computer System", "Introduction to Python", "Database Concepts and the Structured Query Language", "Introduction to Emerging Technologies"],
+    12: ["Data Handling using Pandas and Data Visualization", "Database Query using SQL", "Introduction to Computer Networks", "Societal Impacts of IT and Ethics"],
+  },
+  PSY: {
+    11: ["What is Psychology?", "Methods of Enquiry in Psychology", "Human Development", "Sensory, Attentional and Perceptual Processes", "Learning", "Human Memory", "Thinking", "Motivation and Emotion", "Introduction", "Statistics in Psychology", "Data Handling", "Measures of Central Tendency", "Measures of Variability", "Normal Probability Curve"],
+    12: ["Variations in Psychological Attributes", "Self and Personality", "Meeting Life Challenges", "Psychological Disorders", "Therapeutic Approaches", "Attitude and Social Cognition", "Social Influence and Group Processes"],
+  },
+  SOC: {
+    11: ["Sociology and Society", "Terms, Concepts and Their Use in Sociology", "Understanding Social Institutions", "Culture and Socialization", "Doing Sociology: Research Methods", "Society, Social Structure and Social Stratification", "Social Change and Social Order in Rural and Urban Society", "Environment and Society", "Introducing Western Sociologists", "Indian Sociologists"],
+    12: ["Structural Change", "Cultural Change", "The Demographic Structure of Indian Society", "Social Institutions: Continuity and Change", "Patterns of Social Inequality and Exclusion", "The Challenges of Cultural Diversity", "Change and Development in Rural Society", "Change and Development in Industrial Society", "Social Movements"],
+  },
+  LEGAL: {
+    11: ["Judiciary", "Topics of Law", "Legal Services", "Legal Profession", "Alternative Dispute Resolution", "Human Rights in India", "Consumer Protection Laws"],
+    12: ["Judiciary in India", "Alternative Dispute Resolution (ADR)", "Topics in Law-I: Business and Contract", "Topics in Law-II: General Laws", "Human Rights in India", "International Law", "Legal Profession and Services", "Project/Practical File"],
+  },
+  PE: {
+    11: ["Changing Trends and Career in Physical Education", "Olympic Value Education", "Physical Fitness, Wellness and Lifestyle", "Physical Education and Sports for CWSN (Children with Special Needs – Divyang)", "Yoga", "Physical Activity and Leadership Training", "Test, Measurement and Evaluation", "Fundamentals of Anatomy and Physiology", "Fundamentals of Kinesiology and Biomechanics", "Psychology and Sports", "Training and Doping in Sports"],
+    12: ["Management of Sporting Events", "Children and Women in Sports", "Yoga for Health and Lifestyle", "Physical Education and Sports for Persons with Special Needs", "Sports and Nutrition", "Test, Measurement and Evaluation", "Physiology and Injuries in Sports", "Biomechanics and Sports", "Psychology and Sports", "Training in Sports"],
+  },
 }

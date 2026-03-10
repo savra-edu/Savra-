@@ -89,7 +89,7 @@ export default function Onboarding() {
             <div className="absolute top-[6px] left-1/2 -translate-x-1/2" style={{ width: '220px', height: '188px' }}>
               <Image
                 src="/images/group-1-657d7a.png"
-                alt="Teacher"
+                alt="Educator"
                 width={220}
                 height={281}
                 className="object-contain"
@@ -114,7 +114,7 @@ export default function Onboarding() {
                 padding: '16px 32px'
               }}
             >
-              Teacher
+              Educator
             </button>
           </div>
 
@@ -192,12 +192,12 @@ export default function Onboarding() {
           </button>
         </div>
 
-        {/* Teacher Card */}
+        {/* Educator Card */}
         <div className="w-full max-w-[288px] h-[287px] bg-white rounded-[22px] mb-8 relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow shadow-[0px_4px_21px_0px_rgba(0,0,0,0.02)]">
           <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[220px] h-[188px]">
             <Image
               src="/images/group-1-657d7a.png"
-              alt="Teacher"
+              alt="Educator"
               width={220}
               height={281}
               className="object-contain"
@@ -222,7 +222,7 @@ export default function Onboarding() {
               padding: '16px 32px'
             }}
           >
-            Teacher
+            Educator
           </button>
         </div>
 
