@@ -44,8 +44,8 @@ router.post(
           data: { name: schoolDisplayName, code },
         });
 
-        // Create default classes (grades 1-12, sections A-E) for the new school
-        const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        // Create default classes (grades 6-12, sections A-E) for the new school
+        const grades = [6, 7, 8, 9, 10, 11, 12];
         const sections = ['A', 'B', 'C', 'D', 'E'];
         const classData = grades.flatMap((grade) =>
           sections.map((section) => ({

@@ -60,7 +60,7 @@ export function TeacherLogin() {
               priority
             />
           </div>
-          <h2 className="text-xl font-semibold text-[#242220]">Teacher Log In</h2>
+          <h2 className="text-xl font-semibold text-[#242220]">Educator Log In</h2>
         </div>
 
         {/* Form */}
@@ -199,7 +199,7 @@ export function TeacherLogin() {
               priority
             />
           </div>
-          <h2 className="text-xl font-semibold text-[#242220]">Teacher Login</h2>
+          <h2 className="text-xl font-semibold text-[#242220]">Educator Login</h2>
         </div>
 
         {/* Form */}

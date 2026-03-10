@@ -1,5 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
+/** Event dispatched when refresh token fails — auth context should clear user and redirect */
+export const AUTH_SESSION_EXPIRED_EVENT = 'auth:session-expired';
+
 // Token management
 export const getToken = (): string | null => {
   if (typeof window !== 'undefined') {
@@ -42,10 +45,70 @@ export class ApiError extends Error {
   }
 }
 
+/** Endpoints that must not trigger token refresh on 401 (prevents loops) */
+const NO_REFRESH_ENDPOINTS = ['/auth/refresh-token', '/auth/login'];
+
+function shouldAttemptRefresh(endpoint: string): boolean {
+  return !NO_REFRESH_ENDPOINTS.some((noRefresh) => endpoint.includes(noRefresh));
+}
+
+let refreshPromise: Promise<boolean> | null = null;
+
+/** Attempt to refresh access token. Serializes concurrent calls. Returns true if succeeded. */
+async function attemptTokenRefresh(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        clearTokens();
+        return false;
+      }
+
+      const res = await fetch(`${API_URL}/auth/refresh-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        clearTokens();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT));
+        }
+        return false;
+      }
+
+      const { accessToken, refreshToken: newRefreshToken } = json.data ?? json;
+      if (accessToken && newRefreshToken) {
+        setTokens(accessToken, newRefreshToken);
+        return true;
+      }
+
+      clearTokens();
+      return false;
+    } catch {
+      clearTokens();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT));
+      }
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 // API fetch wrapper
 export async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry = false
 ): Promise<T> {
   const token = getToken();
 
@@ -63,9 +126,14 @@ export async function apiFetch<T>(
     headers,
   });
 
-  // Handle non-JSON responses
+  // Handle non-JSON responses (e.g. proxy HTML on 401)
   const contentType = response.headers.get('content-type');
+  const isAuthError = response.status === 401 || response.status === 481;
   if (!contentType || !contentType.includes('application/json')) {
+    if (isAuthError && !isRetry && shouldAttemptRefresh(endpoint)) {
+      const refreshed = await attemptTokenRefresh();
+      if (refreshed) return apiFetch<T>(endpoint, options, true);
+    }
     if (!response.ok) {
       throw new ApiError('Request failed', response.status);
     }
@@ -74,22 +142,31 @@ export async function apiFetch<T>(
 
   const data = await response.json();
 
-  if (!response.ok) {
-    throw new ApiError(
-      data.message || 'Request failed',
-      response.status,
-      data.errors
-    );
+  // 401 or 481 (proxy auth): try token refresh once, then retry
+  if (isAuthError && !isRetry && shouldAttemptRefresh(endpoint)) {
+    const refreshed = await attemptTokenRefresh();
+    if (refreshed) {
+      return apiFetch<T>(endpoint, options, true);
+    }
   }
 
-  return data;
+  if (!response.ok) {
+    const message =
+      (data as { error?: { message?: string }; message?: string })?.error?.message ??
+      (data as { message?: string })?.message ??
+      'Request failed';
+    throw new ApiError(message, response.status, (data as { errors?: Record<string, string[]> })?.errors);
+  }
+
+  return data as T;
 }
 
 // File upload wrapper (for multipart/form-data)
 export async function apiUpload<T>(
   endpoint: string,
   formData: FormData,
-  method: 'POST' | 'PUT' = 'POST'
+  method: 'POST' | 'PUT' = 'POST',
+  isRetry = false
 ): Promise<T> {
   const token = getToken();
 
@@ -107,15 +184,23 @@ export async function apiUpload<T>(
 
   const data = await response.json();
 
-  if (!response.ok) {
-    throw new ApiError(
-      data.message || 'Upload failed',
-      response.status,
-      data.errors
-    );
+  const isAuthError = response.status === 401 || response.status === 481;
+  if (isAuthError && !isRetry && shouldAttemptRefresh(endpoint)) {
+    const refreshed = await attemptTokenRefresh();
+    if (refreshed) {
+      return apiUpload<T>(endpoint, formData, method, true);
+    }
   }
 
-  return data;
+  if (!response.ok) {
+    const message =
+      (data as { error?: { message?: string }; message?: string })?.error?.message ??
+      (data as { message?: string })?.message ??
+      'Upload failed';
+    throw new ApiError(message, response.status, (data as { errors?: Record<string, string[]> })?.errors);
+  }
+
+  return data as T;
 }
 
 // Convenience methods

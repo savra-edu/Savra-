@@ -500,11 +500,14 @@ router.get(
         return notFoundResponse(res, 'Teacher profile not found');
       }
 
+      // Only show saved items (exclude 'generated' - not yet saved by user)
+      const savedStatuses = ['draft', 'saved', 'published'] as const;
+
       // Get recent items in parallel
       const [recentLessons, recentQuizzes, recentAttempts] = await Promise.all([
         // Recent lessons
         prisma.lesson.findMany({
-          where: { teacherId: teacher.id },
+          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
           select: {
             id: true,
             title: true,
@@ -518,7 +521,7 @@ router.get(
         }),
         // Recent quizzes
         prisma.quiz.findMany({
-          where: { teacherId: teacher.id },
+          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
           select: {
             id: true,
             title: true,
@@ -1393,10 +1396,13 @@ router.get(
         status?: string;
       }> = [];
 
+      // Only include saved items (exclude 'generated' - not yet saved by user)
+      const savedStatuses = ['draft', 'saved', 'published'] as const;
+
       // Fetch lessons
       if (type === 'all' || type === 'lesson') {
         const lessons = await prisma.lesson.findMany({
-          where: { teacherId: teacher.id },
+          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
           select: {
             id: true,
             title: true,
@@ -1425,7 +1431,7 @@ router.get(
       // Fetch quizzes
       if (type === 'all' || type === 'quiz') {
         const quizzes = await prisma.quiz.findMany({
-          where: { teacherId: teacher.id },
+          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
           select: {
             id: true,
             title: true,
@@ -1454,7 +1460,7 @@ router.get(
       // Fetch assessments (question papers)
       if (type === 'all' || type === 'assessment') {
         const assessments = await prisma.assessment.findMany({
-          where: { teacherId: teacher.id },
+          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
           select: {
             id: true,
             title: true,
@@ -1544,21 +1550,25 @@ router.get(
         return notFoundResponse(res, 'Teacher profile not found');
       }
 
+      // Only count saved items (exclude 'generated' - not yet saved by user)
+      const savedStatuses: Array<'draft' | 'saved' | 'published'> = ['draft', 'saved', 'published'];
+      const whereSaved = { teacherId: teacher.id, status: { in: savedStatuses } };
+
       // Get counts in parallel
       const [lessonCounts, quizCounts, assessmentCounts, announcementCount] = await Promise.all([
         prisma.lesson.groupBy({
           by: ['status'],
-          where: { teacherId: teacher.id },
+          where: whereSaved,
           _count: true,
         }),
         prisma.quiz.groupBy({
           by: ['status'],
-          where: { teacherId: teacher.id },
+          where: whereSaved,
           _count: true,
         }),
         prisma.assessment.groupBy({
           by: ['status'],
-          where: { teacherId: teacher.id },
+          where: whereSaved,
           _count: true,
         }),
         prisma.announcement.count({ where: { teacherId: teacher.id } }),
@@ -1569,19 +1579,19 @@ router.get(
           draft: lessonCounts.find((l) => l.status === 'draft')?._count || 0,
           saved: lessonCounts.find((l) => l.status === 'saved')?._count || 0,
           published: lessonCounts.find((l) => l.status === 'published')?._count || 0,
-          total: lessonCounts.reduce((sum, l) => sum + l._count, 0),
+          total: lessonCounts.reduce((sum, l) => sum + (typeof l._count === 'number' ? l._count : 0), 0),
         },
         quizzes: {
           draft: quizCounts.find((q) => q.status === 'draft')?._count || 0,
           saved: quizCounts.find((q) => q.status === 'saved')?._count || 0,
           published: quizCounts.find((q) => q.status === 'published')?._count || 0,
-          total: quizCounts.reduce((sum, q) => sum + q._count, 0),
+          total: quizCounts.reduce((sum, q) => sum + (typeof q._count === 'number' ? q._count : 0), 0),
         },
         assessments: {
           draft: assessmentCounts.find((a) => a.status === 'draft')?._count || 0,
           saved: assessmentCounts.find((a) => a.status === 'saved')?._count || 0,
           published: assessmentCounts.find((a) => a.status === 'published')?._count || 0,
-          total: assessmentCounts.reduce((sum, a) => sum + a._count, 0),
+          total: assessmentCounts.reduce((sum, a) => sum + (typeof a._count === 'number' ? a._count : 0), 0),
         },
         announcements: {
           total: announcementCount,

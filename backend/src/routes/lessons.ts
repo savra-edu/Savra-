@@ -92,6 +92,7 @@ router.post(
             classId,
             subjectId,
             title,
+            status: 'generated',
             duration: duration || null,
             objective: objective || null,
             startDate: startDate ? new Date(startDate) : null,
@@ -786,8 +787,9 @@ router.patch(
         return notFoundResponse(res, 'Lesson not found');
       }
 
-      // Validate status transition
+      // Validate status transition (generated -> draft/saved when user saves)
       const validTransitions: { [key: string]: string[] } = {
+        generated: ['draft', 'saved', 'published'],
         draft: ['saved', 'published'],
         saved: ['draft', 'published'],
         published: ['draft', 'saved'],

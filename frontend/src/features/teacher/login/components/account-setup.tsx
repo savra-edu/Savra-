@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { OnboardingDialog } from "./onboarding-dialog"
 import { StepRoleSelect } from "./step-role-select"
-import { StepSchoolSearch } from "./step-school-search"
 import { StepAddSubject } from "./step-add-dialog"
 import { StepSubjectSelect } from "./step-subject-select"
 import { StepClassSelect } from "./step-class-select"
@@ -18,7 +17,6 @@ export default function AccountSetup() {
   const [showDialog, setShowDialog] = useState(true)
   const [formData, setFormData] = useState({
     role: "",
-    school: "",
     subjects: [] as string[],
     classes: [] as string[],
     name: "",
@@ -31,7 +29,7 @@ export default function AccountSetup() {
 
   const handleAddSubjectClick = () => {
     setShowAddSubjectStep(true)
-    setCurrentStepIndex(4) // Updated index after adding classes step
+    setCurrentStepIndex(2) // addSubject step index (role=0, subjects=1, addSubject=2)
   }
 
   const handleAddSubjectNext = () => {
@@ -41,15 +39,13 @@ export default function AccountSetup() {
       setFormData({ ...formData, subjects: updatedSubjects })
     }
     setNewSubject("")
-    // Navigate back to subjects step (index 2) and remove add subject step
-    setCurrentStepIndex(2)
+    setCurrentStepIndex(1) // Back to subjects step
     setShowAddSubjectStep(false)
   }
 
   const handleAddSubjectBack = () => {
-    // When user clicks Back on add subject step, go back to subjects
     setNewSubject("")
-    setCurrentStepIndex(2)
+    setCurrentStepIndex(1) // Back to subjects step
     setShowAddSubjectStep(false)
   }
 
@@ -59,13 +55,6 @@ export default function AccountSetup() {
       title: "What's your role?",
       description: "We have tools to save time for every role. Help us help you!",
       content: <StepRoleSelect value={formData.role} onSelect={(role) => setFormData({ ...formData, role })} />,
-    },
-    {
-      id: "school",
-      title: "Find your school",
-      description: "We can tailor your experience for your school.",
-      content: <StepSchoolSearch value={formData.school} onSelect={(school) => setFormData({ ...formData, school })} />,
-      showSkip: true,
     },
     {
       id: "subjects",
@@ -112,7 +101,7 @@ export default function AccountSetup() {
   // Insert add subject step dynamically when needed
   const steps = showAddSubjectStep
     ? [
-        ...baseSteps.slice(0, 3),
+        ...baseSteps.slice(0, 2),
         {
           id: "addSubject",
           title: "Add Subject",
@@ -122,7 +111,7 @@ export default function AccountSetup() {
           onNext: handleAddSubjectNext,
           onBack: handleAddSubjectBack,
         },
-        ...baseSteps.slice(3),
+        ...baseSteps.slice(2),
       ]
     : baseSteps
 
@@ -133,7 +122,7 @@ export default function AccountSetup() {
     // Store onboarding data in localStorage for preview (always save)
     saveOnboardingData({
       role: formData.role,
-      school: formData.school,
+      school: "",
       subjects: formData.subjects,
       classes: formData.classes,
       name: formData.name,
@@ -141,10 +130,8 @@ export default function AccountSetup() {
     })
 
     try {
-      // Submit onboarding data to API
       await api.post("/teacher/onboarding", {
         role: formData.role,
-        school: formData.school,
         subjects: formData.subjects,
         classes: formData.classes,
         name: formData.name,

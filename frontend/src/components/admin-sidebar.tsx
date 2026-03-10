@@ -1,10 +1,11 @@
 "use client"
 
 import type React from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutGrid, Users, School, FileText } from "lucide-react"
+import { LayoutGrid, Users, School, LogOut } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 function getInitials(name: string | undefined): string {
@@ -26,29 +27,25 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" />, href: "/admin-dashboard" },
-    {
-        id: "teachers",
-        label: "Teachers",
-        icon: <Users className="w-5 h-5" />,
-        href: "/teachers"
-    },
-    {
-        id: "classrooms",
-        label: "Classrooms",
-        icon: <School className="w-5 h-5" />,
-        href: "/classrooms"
-    },
-    {
-        id: "reports",
-        label: "Reports",
-        icon: <FileText className="w-5 h-5" />,
-        href: "/reports"
-    }
+    { id: "teachers", label: "Teachers", icon: <Users className="w-5 h-5" />, href: "/teachers" },
+    { id: "classrooms", label: "Classrooms", icon: <School className="w-5 h-5" />, href: "/classrooms" },
 ]
 
 export function AdminSidebar() {
     const pathname = usePathname()
-    const { user } = useAuth()
+    const { user, logout } = useAuth()
+    const [profileOpen, setProfileOpen] = useState(false)
+    const profileRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+                setProfileOpen(false)
+            }
+        }
+        if (profileOpen) document.addEventListener("click", handleClickOutside)
+        return () => document.removeEventListener("click", handleClickOutside)
+    }, [profileOpen])
 
     return (
         <div
@@ -102,10 +99,12 @@ export function AdminSidebar() {
                 </nav>
             </div>
 
-            {/* Admin Section */}
-            <div className="p-2">
-                <div
-                    className="flex items-center gap-3 rounded-xl transition-all hover:bg-white/40 p-2 -m-2 cursor-pointer"
+            {/* Admin Profile Section */}
+            <div ref={profileRef} className="p-2 relative">
+                <button
+                    type="button"
+                    onClick={() => setProfileOpen((o) => !o)}
+                    className="w-full flex items-center gap-3 rounded-xl p-2 -m-2 transition-all hover:bg-white/40 text-left cursor-pointer"
                 >
                     {user?.avatarUrl ? (
                         <Image
@@ -130,7 +129,22 @@ export function AdminSidebar() {
                             {user?.name || "Loading..."}
                         </p>
                     </div>
-                </div>
+                </button>
+                {profileOpen && (
+                    <div className="absolute bottom-full left-2 right-2 mb-1 py-1 bg-white rounded-xl shadow-lg border border-[#F5EFEB66] z-50">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setProfileOpen(false)
+                                logout()
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#F0EAFA] text-left font-medium text-sm text-[#242220]"
+                        >
+                            <LogOut className="w-5 h-5" />
+                            Log out
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     )

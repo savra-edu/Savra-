@@ -70,6 +70,8 @@ interface ClassSelectProps {
   className?: string
   classes?: ClassData[]
   disabled?: boolean
+  /** "simple" = flat dropdown like Quiz (Class 8, Class 9, etc.); "full" = nested grade/section */
+  variant?: "full" | "simple"
 }
 
 export function ClassSelect({
@@ -79,17 +81,29 @@ export function ClassSelect({
   className,
   classes,
   disabled,
+  variant = "full",
 }: ClassSelectProps) {
-  // Only build grade structure from API classes - no fallback to prevent showing wrong data
-  const gradeStructure = classes && classes.length > 0
+  // Simple mode: one class per grade (like Quiz/Assessment)
+  const classesByGrade =
+    variant === "simple" && classes?.length
+      ? [...classes]
+          .filter((c) => c.grade >= 6)
+          .sort((a, b) => a.grade - b.grade || a.section.localeCompare(b.section))
+          .filter((c, i, arr) => arr.findIndex((x) => x.grade === c.grade) === i)
+      : []
+
+  // Only build grade structure from API classes - grades 6-12 only
+  const gradeStructure = variant === "full" && classes && classes.length > 0
     ? Array.from(
-        classes.reduce((acc, cls) => {
-          if (!acc.has(cls.grade)) {
-            acc.set(cls.grade, new Set())
-          }
-          acc.get(cls.grade)!.add(cls.section)
-          return acc
-        }, new Map<number, Set<string>>())
+        classes
+          .filter((cls) => cls.grade >= 6)
+          .reduce((acc, cls) => {
+            if (!acc.has(cls.grade)) {
+              acc.set(cls.grade, new Set())
+            }
+            acc.get(cls.grade)!.add(cls.section)
+            return acc
+          }, new Map<number, Set<string>>())
       ).map(([grade, sections]) => ({
         grade,
         sections: Array.from(sections).sort()
@@ -171,6 +185,41 @@ export function ClassSelect({
 
   const displayValue = value ? formatValue(internalValue) : placeholder
 
+  // Simple variant: flat "Class N" dropdown like Quiz/Assessment
+  if (variant === "simple") {
+    const gradeNum = internalValue ? parseInt(internalValue.split("-")[0]) : null
+    const matchingOption = gradeNum ? classesByGrade.find((c) => c.grade === gradeNum) : null
+    const simpleValue = matchingOption ? `Class: ${matchingOption.grade} ${matchingOption.section}` : undefined
+
+    return (
+      <Select
+        value={simpleValue}
+        onValueChange={(v) => onValueChange?.(v)}
+        disabled={disabled || !classesByGrade.length}
+      >
+        <SelectTrigger
+          className={cn(
+            "w-[150px] h-10 p-2 bg-[#9B61FF] text-white font-semibold border-0 hover:bg-[#8B51EF]",
+            "[&_span]:text-white [&_svg]:!text-white [&_svg]:!opacity-100",
+            className
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {classesByGrade.map((c) => {
+            const itemValue = `Class: ${c.grade} ${c.section}`
+            return (
+              <SelectItem key={c.id} value={itemValue}>
+                Class {c.grade}
+              </SelectItem>
+            )
+          })}
+        </SelectContent>
+      </Select>
+    )
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -215,7 +264,7 @@ export function ClassSelect({
                     hasSelectedSection && "bg-[#F1E9FF]"
                   )}
                 >
-                  <span>Grade {gradeNum}</span>
+                  <span>{gradeNum}</span>
                   {isExpanded ? (
                     <ChevronDown className="w-4 h-4 text-gray-600" />
                   ) : (
@@ -229,7 +278,7 @@ export function ClassSelect({
                     {sections.map((section) => {
                       const sectionValue = `${gradeNum}-${section}`
                       const isSelected = internalValue === sectionValue
-                      const displayText = `Class: ${gradeNum} ${section}`
+                      const displayText = `${gradeNum} ${section}`
 
                       return (
                         <button

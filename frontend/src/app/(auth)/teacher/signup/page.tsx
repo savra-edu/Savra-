@@ -75,7 +75,7 @@ export default function TeacherSignupPage() {
               priority
             />
           </div>
-          <h2 className="text-xl font-semibold text-[#242220]">Teacher Sign Up</h2>
+          <h2 className="text-xl font-semibold text-[#242220]">Educator Sign Up</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-4">
@@ -195,7 +195,7 @@ export default function TeacherSignupPage() {
               priority
             />
           </div>
-          <h2 className="text-xl font-semibold text-[#242220]">Teacher Sign Up</h2>
+          <h2 className="text-xl font-semibold text-[#242220]">Educator Sign Up</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 flex flex-col items-center">

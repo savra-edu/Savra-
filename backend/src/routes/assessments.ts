@@ -82,13 +82,14 @@ router.post(
         return errorResponse(res, 'One or more chapters are invalid or do not belong to the selected subject', 400, 'INVALID_CHAPTERS');
       }
 
-      // Create assessment with chapter associations and question types
+      // Create assessment with chapter associations and question types (status: generated until user saves draft)
       const assessment = await prisma.assessment.create({
         data: {
           teacherId,
           classId,
           subjectId,
           title,
+          status: 'generated',
           objective: objective || null,
           totalMarks,
           difficultyLevel: (difficultyLevel as DifficultyLevel) || 'medium',
@@ -672,8 +673,9 @@ router.patch(
         return notFoundResponse(res, 'Assessment not found');
       }
 
-      // Validate status transition
+      // Validate status transition (generated -> draft when user saves)
       const validTransitions: { [key: string]: string[] } = {
+        generated: ['draft', 'saved', 'published'],
         draft: ['saved', 'published'],
         saved: ['draft', 'published'],
         published: ['draft', 'saved'],

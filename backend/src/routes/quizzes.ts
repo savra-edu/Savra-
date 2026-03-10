@@ -86,13 +86,14 @@ router.post(
         return errorResponse(res, 'One or more chapters are invalid or do not belong to the selected subject', 400, 'INVALID_CHAPTERS');
       }
 
-      // Create quiz with chapter associations
+      // Create quiz with chapter associations (status: generated until user saves draft)
       const quiz = await prisma.quiz.create({
         data: {
           teacherId,
           classId,
           subjectId,
           title,
+          status: 'generated' as QuizStatus,
           objective: objective || null,
           timeLimit: timeLimit || null,
           difficultyLevel: (difficultyLevel as DifficultyLevel) || 'medium',
@@ -694,8 +695,9 @@ router.patch(
         return notFoundResponse(res, 'Quiz not found');
       }
 
-      // Validate status transition
+      // Validate status transition (generated -> draft when user saves)
       const validTransitions: { [key: string]: string[] } = {
+        generated: ['draft', 'saved', 'published'],
         draft: ['saved', 'published'],
         saved: ['draft', 'published'],
         published: ['draft', 'saved'],

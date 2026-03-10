@@ -361,7 +361,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4">
             {/* First Row: Print, Share */}
-            <div className="flex justify-start items-center gap-3">
+            <div className="flex justify-start items-center gap-3 flex-wrap">
               <button className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm">
                 <Printer size={18} /> Print
               </button>
@@ -373,13 +373,20 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
                 {linkCopied ? "Copied!" : "Share"}
               </button>
             </div>
-            {/* Second Row: Modify Prompt and Download */}
-            <div className="flex gap-3">
+            {/* Second Row: Modify Prompt, Save Lesson Plan, Download */}
+            <div className="flex gap-3 flex-wrap">
               <button
                 onClick={handleModifyPrompt}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-[#DF6647] text-[#DF6647] bg-white rounded-xl font-semibold hover:bg-[#DF6647]/10 transition-colors"
+                className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 border-2 border-[#DF6647] text-[#DF6647] bg-white rounded-xl font-semibold hover:bg-[#DF6647]/10 transition-colors"
               >
                 Modify Prompt
+              </button>
+              <button
+                onClick={handleSaveLessonPlan}
+                disabled={isSaving}
+                className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-[#DF6647] hover:bg-[#DF6647]/90 text-white rounded-xl font-semibold disabled:opacity-50"
+              >
+                {isSaving ? "Saving..." : "Save Lesson Plan"}
               </button>
               <DownloadDropdown
                 onDownloadPDF={handleDownloadPDF}

@@ -135,10 +135,10 @@ export function OnboardingDialog({ steps, onComplete, onClose, initialStep = 0 }
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:flex fixed inset-0 items-center justify-center bg-black/50 z-50">
-        <div className="relative w-full max-w-2xl mx-4 rounded-lg bg-white p-8">
-          {/* Header */}
-          <div className="mb-8">
+      <div className="hidden md:flex fixed inset-0 items-center justify-center bg-black/50 z-50 p-4">
+        <div className="relative w-full max-w-2xl max-h-[90vh] rounded-lg bg-white p-8 flex flex-col overflow-hidden">
+          {/* Header - fixed */}
+          <div className="flex-shrink-0 mb-6">
             <div className="flex items-center justify-between">
               <button
                 onClick={handleBack}
@@ -165,16 +165,15 @@ export function OnboardingDialog({ steps, onComplete, onClose, initialStep = 0 }
             <div className="h-px bg-gray-200" />
           </div>
 
-          {/* Content */}
-          <div className="min-h-[300px] flex flex-col justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-center mb-2 text-[#242220]">{step.title}</h2>
-              {step.description && <p className="text-center text-[#353535] text-sm mb-6">{step.description}</p>}
-              <div className="mt-6">{step.content}</div>
-            </div>
+          {/* Content - scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2">
+            <h2 className="text-2xl font-bold text-center mb-2 text-[#242220]">{step.title}</h2>
+            {step.description && <p className="text-center text-[#353535] text-sm mb-6">{step.description}</p>}
+            <div className="mt-6">{step.content}</div>
+          </div>
 
-            {/* Footer with buttons */}
-            <div className="mt-8 flex flex-col gap-4">
+          {/* Footer - fixed */}
+          <div className="flex-shrink-0 pt-6 flex flex-col gap-4 border-t border-gray-100 mt-4">
               <div className="flex gap-3 justify-center">
                 {isLastStep ? (
                   // Last step - show Back and I Accept buttons
@@ -214,7 +213,6 @@ export function OnboardingDialog({ steps, onComplete, onClose, initialStep = 0 }
               <p className="text-center text-[#8C8C8C] text-sm">
                 Step {currentStep + 1}/{steps.length}
               </p>
-            </div>
           </div>
 
           {/* Progress bar */}

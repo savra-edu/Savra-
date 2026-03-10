@@ -30,6 +30,15 @@ async function main() {
     { name: 'Physics', code: 'PHY' },
     { name: 'Chemistry', code: 'CHEM' },
     { name: 'Biology', code: 'BIO' },
+    { name: 'Economics', code: 'ECO' },
+    { name: 'Political Science', code: 'POL' },
+    { name: 'Accountancy', code: 'ACC' },
+    { name: 'Hindustani Music', code: 'HMUS' },
+    { name: 'Informatics Practices', code: 'IP' },
+    { name: 'Psychology', code: 'PSY' },
+    { name: 'Sociology', code: 'SOC' },
+    { name: 'Legal Studies', code: 'LEGAL' },
+    { name: 'Physical Education', code: 'PE' },
   ];
 
   const subjects: Record<string, { id: string; name: string }> = {};
