@@ -41,7 +41,7 @@ export function SubjectSelect({
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent className="w-[120px] bg-white p-1">
+      <SelectContent className="w-[120px] max-h-60 overflow-y-auto bg-white p-1" side="bottom" position="popper">
         {subjectList.map((subject) => (
           <SelectItem
             key={subject}
@@ -206,7 +206,7 @@ export function ClassSelect({
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-72 overflow-y-auto" side="bottom" position="popper">
           {classesByGrade.map((c) => {
             const itemValue = `Class: ${c.grade} ${c.section}`
             return (
