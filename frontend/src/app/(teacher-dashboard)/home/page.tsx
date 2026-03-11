@@ -1,20 +1,29 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import HomeHeader from "@/features/teacher/home/components/home-header";
 import { QuickActions } from "@/features/teacher/home/components/quick-actions";
 import { RecentActivity } from "@/features/teacher/home/components/recent-activity";
 import AccountSetup from "@/features/teacher/login/components/account-setup";
+import { useAuth } from "@/contexts/auth-context"
 
 function HomePageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user } = useAuth()
   const [showSetup, setShowSetup] = useState(false)
 
   useEffect(() => {
     const setup = searchParams.get("setup")
+    // Never show onboarding for teachers who have already completed it
+    if (user?.role === "teacher" && user?.onboardingCompleted === true && setup === "true") {
+      router.replace("/home")
+      setShowSetup(false)
+      return
+    }
     setShowSetup(setup === "true")
-  }, [searchParams])
+  }, [searchParams, user?.role, user?.onboardingCompleted, router])
 
   if (showSetup) {
     return <AccountSetup />
