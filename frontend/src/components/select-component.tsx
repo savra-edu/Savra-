@@ -28,13 +28,13 @@ export function SubjectSelect({
   subjects,
   disabled,
 }: SubjectSelectProps) {
-  const subjectList = subjects && subjects.length > 0 ? subjects : []
+  const subjectList = subjects && subjects.length > 0 ? [...new Set(subjects)] : []
 
   return (
     <Select value={value || undefined} onValueChange={onValueChange} disabled={disabled || subjectList.length === 0}>
       <SelectTrigger
         className={cn(
-          "w-[120px] h-14 p-2 bg-white ",
+          "w-[120px] h-14 p-2 bg-white border-0",
           "text-[#353535] font-medium",
           className
         )}

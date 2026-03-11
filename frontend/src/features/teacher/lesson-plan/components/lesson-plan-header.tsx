@@ -62,7 +62,7 @@ export function LessonPlanHeader({
                 <ClassSelect
                     value={classValue}
                     onValueChange={onClassChange}
-                    placeholder={isClassesLoading ? "Loading..." : "Select class"}
+                    placeholder={isClassesLoading ? "Loading..." : "Select Class"}
                     classes={classes || undefined}
                     disabled={isClassesLoading || !classes?.length}
                     variant="simple"
@@ -70,7 +70,7 @@ export function LessonPlanHeader({
                 <SubjectSelect
                     value={subject}
                     onValueChange={onSubjectChange}
-                    placeholder={isSubjectsLoading ? "Loading..." : "Select subject"}
+                    placeholder={isSubjectsLoading ? "Loading..." : "Select Subject"}
                     subjects={subjects || undefined}
                     disabled={isSubjectsLoading || !subjects?.length}
                 />

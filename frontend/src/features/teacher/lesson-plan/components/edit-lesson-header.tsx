@@ -89,17 +89,18 @@ export function EditLessonHeader({ className, isEditMode = false, onEditClick, l
             </div>
             <div className="hidden lg:flex items-center gap-4">
                 <SearchBar />
-                <SubjectSelect
-                    value={subject}
-                    onValueChange={setSubject}
-                    placeholder="Select subject"
-                    subjects={subjects || undefined}
-                />
                 <ClassSelect
                     value={classValue}
                     onValueChange={setClassValue}
-                    placeholder="Select class"
+                    placeholder="Select Class"
                     classes={classes || undefined}
+                    variant="simple"
+                />
+                <SubjectSelect
+                    value={subject}
+                    onValueChange={setSubject}
+                    placeholder="Select Subject"
+                    subjects={subjects || undefined}
                 />
             </div>
         </div>
