@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Download, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -13,12 +14,68 @@ interface TeachersTableProps {
   page?: number
   limit?: number
   onPageChange?: (page: number) => void
+  gradeFilter?: string
+  subjectFilter?: string
 }
 
-export default function DashboardTable({ page = 1, limit = 10, onPageChange }: TeachersTableProps) {
+/** Check if teacher matches grade filter (supports whole grade "7", section "7-C", or multi "7-A,7-B") */
+function teacherMatchesGrade(teacher: AdminTeacher, gradeFilter: string): boolean {
+  if (!gradeFilter || gradeFilter === "all") return true
+  const classes = teacher.classes || []
+  if (classes.length === 0) return false
+
+  // Whole grade (e.g. "7" or "8")
+  if (!gradeFilter.includes("-") && !gradeFilter.includes(",")) {
+    const gradeNum = parseInt(gradeFilter)
+    return classes.some((c) => c.grade === gradeNum)
+  }
+
+  // Single section or multi-section (e.g. "7-C" or "7-A,7-B")
+  const sections = gradeFilter.split(",").map((s) => s.trim())
+  return sections.some((sec) => {
+    const [g, s] = sec.split("-")
+    const gradeNum = parseInt(g)
+    return classes.some((c) => c.grade === gradeNum && c.section === s)
+  })
+}
+
+/** Check if teacher matches subject filter */
+function teacherMatchesSubject(teacher: AdminTeacher, subjectFilter: string): boolean {
+  if (!subjectFilter || subjectFilter === "All Subjects") return true
+  const subjects = teacher.subjects?.map((s) => s.name) || []
+  return subjects.some((s) => s.toLowerCase().includes(subjectFilter.toLowerCase()))
+}
+
+export default function DashboardTable({
+  page = 1,
+  limit = 10,
+  onPageChange,
+  gradeFilter = "all",
+  subjectFilter = "All Subjects",
+}: TeachersTableProps) {
   const router = useRouter()
-  const { data: teachers, isLoading, error, pagination, nextPage, prevPage, goToPage } = useAdminTeachers(page, limit)
+  const hasFilters = gradeFilter !== "all" || subjectFilter !== "All Subjects"
+  const fetchLimit = hasFilters ? 200 : limit
+  const fetchPage = hasFilters ? 1 : page
+  const { data: teachers, isLoading, error, pagination, nextPage, prevPage, goToPage } = useAdminTeachers(fetchPage, fetchLimit)
   const [isExporting, setIsExporting] = useState(false)
+  const [localPage, setLocalPage] = useState(1)
+
+  useEffect(() => {
+    setLocalPage(1)
+  }, [gradeFilter, subjectFilter])
+
+  const filteredTeachers = (teachers || []).filter(
+    (t) => teacherMatchesGrade(t, gradeFilter) && teacherMatchesSubject(t, subjectFilter)
+  )
+  const totalFiltered = filteredTeachers.length
+  const totalPagesFiltered = Math.ceil(totalFiltered / limit) || 1
+  const displayTeachers = hasFilters
+    ? filteredTeachers.slice((localPage - 1) * limit, localPage * limit)
+    : (teachers || [])
+  const displayPagination = hasFilters
+    ? { page: localPage, limit, total: totalFiltered, totalPages: totalPagesFiltered }
+    : (pagination || { page, limit, total: (teachers || []).length, totalPages: 1 })
 
   // Calculate teacher activity level using centralized constants
   const getTeacherActivityLevel = (teacher: AdminTeacher): 'High' | 'Mid' | 'Low' => {
@@ -106,7 +163,7 @@ export default function DashboardTable({ page = 1, limit = 10, onPageChange }: T
     )
   }
 
-  // Empty state
+  // Empty state (no teachers at all)
   if (!teachers || teachers.length === 0) {
     return (
       <div className="mt-6 w-full">
@@ -123,7 +180,7 @@ export default function DashboardTable({ page = 1, limit = 10, onPageChange }: T
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-[#353535]">
-            All Teachers ({pagination?.total || teachers.length})
+            All Teachers ({displayPagination?.total ?? displayTeachers.length})
           </h1>
         </div>
 
@@ -144,7 +201,7 @@ export default function DashboardTable({ page = 1, limit = 10, onPageChange }: T
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teachers.map((teacher) => {
+                {displayTeachers.map((teacher) => {
                   const activity = getTeacherActivityLevel(teacher)
                   return (
                     <TableRow
@@ -189,29 +246,35 @@ export default function DashboardTable({ page = 1, limit = 10, onPageChange }: T
         </div>
 
         {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
+        {displayPagination && displayPagination.totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} teachers
+              Showing {((displayPagination.page - 1) * displayPagination.limit) + 1} to {Math.min(displayPagination.page * displayPagination.limit, displayPagination.total)} of {displayPagination.total} teachers
             </p>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={pagination.page === 1}
+                onClick={() => {
+                  const newPage = displayPagination.page - 1
+                  hasFilters ? setLocalPage(newPage) : handlePageChange(newPage)
+                }}
+                disabled={displayPagination.page === 1}
               >
                 <ChevronLeft size={16} />
                 Previous
               </Button>
               <span className="text-sm text-gray-600">
-                Page {pagination.page} of {pagination.totalPages}
+                Page {displayPagination.page} of {displayPagination.totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={pagination.page === pagination.totalPages}
+                onClick={() => {
+                  const newPage = displayPagination.page + 1
+                  hasFilters ? setLocalPage(newPage) : handlePageChange(newPage)
+                }}
+                disabled={displayPagination.page === displayPagination.totalPages}
               >
                 Next
                 <ChevronRight size={16} />

@@ -1,7 +1,21 @@
+"use client"
+
 import { AdminFilterBar } from "@/components/admin-filter-bar";
 import AdminSearchBar from "@/components/admin-search-bar";
 
-export default function TeacherHeader() {
+interface TeacherHeaderProps {
+    selectedGrade?: string
+    onGradeChange?: (value: string) => void
+    selectedSubject?: string
+    onSubjectChange?: (value: string) => void
+}
+
+export default function TeacherHeader({
+    selectedGrade = "all",
+    onGradeChange,
+    selectedSubject = "All Subjects",
+    onSubjectChange,
+}: TeacherHeaderProps) {
     return (
         <div className="flex flex-row justify-between items-center border-b border-gray-200 pb-6">
             <div>
@@ -10,7 +24,12 @@ export default function TeacherHeader() {
             </div>
             <div className="flex items-center gap-4">
                 <AdminSearchBar />
-                <AdminFilterBar />
+                <AdminFilterBar
+                    defaultGrade={selectedGrade}
+                    defaultSubject={selectedSubject}
+                    onGradeChange={onGradeChange}
+                    onSubjectChange={onSubjectChange}
+                />
             </div>
         </div>
     )
