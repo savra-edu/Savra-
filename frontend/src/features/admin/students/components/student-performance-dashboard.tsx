@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClassAverageChart } from "./class-average-chart"
 import { WeeklyParticipationChart } from "./weekly-participation-chart"
 import { TopicPerformanceChart } from "./topic-performance-chart"
+import { StudentAnalyticsDialog } from "./student-analytics-dialog"
 import { AdminClass, ClassPerformance } from "@/hooks/use-admin"
 
 interface StudentPerformanceDashboardProps {
@@ -11,7 +13,43 @@ interface StudentPerformanceDashboardProps {
   performance: ClassPerformance | null
 }
 
+/** Build leaderboard from students ranked by totalPoints (ties get same rank) */
+function buildLeaderboard(
+  students: Array<{ id: string; totalPoints?: number }>
+): Map<string, { rank: number; totalInClass: number }> {
+  const sorted = [...students].sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0))
+  const map = new Map<string, { rank: number; totalInClass: number }>()
+  let currentRank = 0
+  let lastPoints = -1
+  for (let i = 0; i < sorted.length; i++) {
+    const pts = sorted[i].totalPoints ?? 0
+    if (pts !== lastPoints) {
+      currentRank = i + 1
+      lastPoints = pts
+    }
+    map.set(sorted[i].id, { rank: currentRank, totalInClass: sorted.length })
+  }
+  return map
+}
+
 export default function StudentPerformanceDashboard({ classData, performance }: StudentPerformanceDashboardProps) {
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
+
+  const leaderboard = classData.students?.length
+    ? buildLeaderboard(classData.students)
+    : new Map<string, { rank: number; totalInClass: number }>()
+
+  const handleStudentClick = (studentId: string) => {
+    setSelectedStudentId(studentId)
+    setAnalyticsOpen(true)
+  }
+
+  const handleAnalyticsClose = (open: boolean) => {
+    setAnalyticsOpen(open)
+    if (!open) setSelectedStudentId(null)
+  }
+
   const className = classData.name || `Class ${classData.grade} ${classData.section}`
   const gradeSection = `Grade ${classData.grade}${classData.section}`
 
@@ -72,6 +110,43 @@ export default function StudentPerformanceDashboard({ classData, performance }: 
           <TopicPerformanceChart subjectBreakdown={performance?.subjectBreakdown} />
         </CardContent>
       </Card>
+
+      {/* Students in this class */}
+      {classData.students && classData.students.length > 0 && (
+        <Card className="border-0 shadow-sm mt-8">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-semibold">Students in this class</CardTitle>
+            <CardDescription className="text-xs">
+              {classData.students.length} student{classData.students.length !== 1 ? "s" : ""} enrolled • Click to view analytics
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              {classData.students.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => handleStudentClick(student.id)}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left w-full sm:w-auto min-w-[200px] cursor-pointer border border-transparent hover:border-gray-200"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-semibold text-blue-800">
+                      {student.name?.charAt(0) || "S"}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-[#353535] truncate">{student.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{student.email}</p>
+                    {student.rollNumber != null && (
+                      <p className="text-xs text-gray-400">Roll: {student.rollNumber}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Performers and Needs Attention */}
       {performance && (
@@ -156,6 +231,13 @@ export default function StudentPerformanceDashboard({ classData, performance }: 
           </CardContent>
         </Card>
       )}
+
+      <StudentAnalyticsDialog
+        studentId={selectedStudentId}
+        open={analyticsOpen}
+        onOpenChange={handleAnalyticsClose}
+        classRank={selectedStudentId ? leaderboard.get(selectedStudentId) : undefined}
+      />
     </main>
   )
 }
