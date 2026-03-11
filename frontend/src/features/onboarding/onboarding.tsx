@@ -18,6 +18,11 @@ export default function Onboarding() {
   useEffect(() => {
     if (isLoading) return;
     if (!user) return;
+    const onboardingCompleted = user.onboardingCompleted ?? (user as { profile?: { onboardingCompleted?: boolean } })?.profile?.onboardingCompleted ?? false;
+    if (user.role === 'teacher' && !onboardingCompleted) {
+      router.replace('/home?setup=true');
+      return;
+    }
     const redirectMap: Record<string, string> = {
       teacher: '/home',
       student: '/student-home',

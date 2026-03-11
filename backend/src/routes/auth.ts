@@ -337,7 +337,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response, next: Next
       }
     }
 
-    return successResponse(res, {
+    const responseData: Record<string, unknown> = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -345,7 +345,11 @@ router.get('/me', authMiddleware, async (req: Request, res: Response, next: Next
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
       profile,
-    });
+    };
+    if (role === 'teacher' && profile && typeof (profile as { onboardingCompleted?: boolean }).onboardingCompleted === 'boolean') {
+      responseData.onboardingCompleted = (profile as { onboardingCompleted: boolean }).onboardingCompleted;
+    }
+    return successResponse(res, responseData);
   } catch (error) {
     next(error);
   }

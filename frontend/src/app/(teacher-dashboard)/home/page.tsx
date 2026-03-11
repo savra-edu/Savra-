@@ -8,22 +8,27 @@ import { RecentActivity } from "@/features/teacher/home/components/recent-activi
 import AccountSetup from "@/features/teacher/login/components/account-setup";
 import { useAuth } from "@/contexts/auth-context"
 
+function getOnboardingCompleted(user: { onboardingCompleted?: boolean; profile?: { onboardingCompleted?: boolean } } | null): boolean {
+  if (!user) return false
+  return user.onboardingCompleted ?? (user.profile as { onboardingCompleted?: boolean })?.onboardingCompleted ?? false
+}
+
 function HomePageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
   const [showSetup, setShowSetup] = useState(false)
+  const onboardingCompleted = getOnboardingCompleted(user)
 
   useEffect(() => {
     const setup = searchParams.get("setup")
-    // Never show onboarding for teachers who have already completed it
-    if (user?.role === "teacher" && user?.onboardingCompleted === true && setup === "true") {
+    if (user?.role === "teacher" && onboardingCompleted && setup === "true") {
       router.replace("/home")
       setShowSetup(false)
       return
     }
     setShowSetup(setup === "true")
-  }, [searchParams, user?.role, user?.onboardingCompleted, router])
+  }, [searchParams, user?.role, onboardingCompleted, router])
 
   if (showSetup) {
     return <AccountSetup />

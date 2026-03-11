@@ -107,11 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(response.data.accessToken, response.data.refreshToken);
     setUser(response.data.user);
 
-    // Redirect based on role
     const user = response.data.user;
+    const onboardingCompleted = user.onboardingCompleted ?? (user as { profile?: { onboardingCompleted?: boolean } })?.profile?.onboardingCompleted ?? false;
 
-    // Check if teacher needs onboarding
-    if (user.role === 'teacher' && !user.onboardingCompleted) {
+    if (user.role === 'teacher' && !onboardingCompleted) {
       router.push('/home?setup=true');
       return;
     }
