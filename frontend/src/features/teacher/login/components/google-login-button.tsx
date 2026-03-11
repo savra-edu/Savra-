@@ -9,6 +9,8 @@ interface GoogleLoginButtonProps {
   /** Mobile: circular icon. Desktop: rectangular with text */
   variant?: "icon" | "full"
   className?: string
+  /** When true, disables interaction (e.g. during API call) */
+  disabled?: boolean
 }
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
@@ -18,6 +20,7 @@ export function GoogleLoginButton({
   onError,
   variant = "icon",
   className = "",
+  disabled = false,
 }: GoogleLoginButtonProps) {
   if (!GOOGLE_CLIENT_ID) {
     return (
@@ -37,9 +40,11 @@ export function GoogleLoginButton({
     )
   }
 
+  const wrapperClass = disabled ? `${className} pointer-events-none opacity-60` : className
+
   if (variant === "full") {
     return (
-      <div className={className}>
+      <div className={wrapperClass}>
         <GoogleLogin
           onSuccess={(res) => {
             if (res.credential) {
@@ -60,7 +65,7 @@ export function GoogleLoginButton({
   }
 
   return (
-    <div className={className}>
+    <div className={wrapperClass}>
       <GoogleLogin
         onSuccess={(res) => {
           if (res.credential) {

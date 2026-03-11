@@ -267,6 +267,16 @@ router.post(
         return unauthorizedResponse(res, 'Invalid Google credential');
       }
 
+      // Reject unverified emails (Google includes this claim)
+      if (payload.email_verified === false) {
+        return errorResponse(
+          res,
+          'Please verify your Google account email before signing in.',
+          403,
+          'EMAIL_NOT_VERIFIED'
+        );
+      }
+
       const googleId = payload.sub;
       const email = payload.email;
       const name = payload.name || payload.email.split('@')[0] || 'Teacher';
@@ -367,6 +377,7 @@ router.post(
             role: user.role,
             avatarUrl: user.avatarUrl,
             onboardingCompleted,
+            authMethod: 'google',
           },
           accessToken,
           refreshToken,

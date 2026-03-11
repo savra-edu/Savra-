@@ -42,7 +42,10 @@ export const refreshTokenSchema = z.object({
 
 // Google auth schema (teachers only for now)
 export const googleAuthSchema = z.object({
-  credential: z.string().min(1, 'Google credential is required'),
+  credential: z
+    .string()
+    .min(1, 'Google credential is required')
+    .max(10000, 'Invalid credential'),
   role: z.literal('teacher', {
     errorMap: () => ({ message: 'Google sign-in is only supported for teachers' }),
   }),

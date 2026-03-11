@@ -13,15 +13,19 @@ export function TeacherLogin() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
   const { login, loginWithGoogle, isLoading } = useAuth()
 
   const handleGoogleSuccess = async (credential: string) => {
     setError("")
+    setIsGoogleLoading(true)
     try {
       await loginWithGoogle(credential, "teacher")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in failed")
+    } finally {
+      setIsGoogleLoading(false)
     }
   }
 
@@ -153,6 +157,7 @@ export function TeacherLogin() {
               onSuccess={handleGoogleSuccess}
               onError={setError}
               variant="icon"
+              disabled={isGoogleLoading}
             />
 
             {/* Apple */}
@@ -286,6 +291,7 @@ export function TeacherLogin() {
               onError={setError}
               variant="full"
               className="flex-1"
+              disabled={isGoogleLoading}
             />
             <button
               type="button"
