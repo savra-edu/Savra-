@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
-import { X, Search, ChevronDown, ChevronLeft, MoreVertical, Pencil, Trash2, LogOut, Loader2, AlertTriangle } from "lucide-react"
+import { X, Search, ChevronDown, ChevronLeft, MoreVertical, Pencil, Trash2, LogOut, Loader2, AlertTriangle, Check } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,6 +107,7 @@ function UserProfileContent() {
   }, [profile])
 
   const subjectOptions = availableSubjects || ["Maths", "Science", "English", "History", "Geography", "Biology"]
+  const uniqueSubjectOptions = Array.from(new Set(subjectOptions))
 
   const removeSubject = (subject: string) => {
     setSubjects(subjects.filter((s) => s !== subject))
@@ -116,23 +117,24 @@ function UserProfileContent() {
     setSelectedClassIds(selectedClassIds.filter((id) => id !== classId))
   }
 
-  const addClass = (classId: string) => {
-    if (!selectedClassIds.includes(classId)) {
+  const toggleClass = (classId: string) => {
+    if (selectedClassIds.includes(classId)) {
+      setSelectedClassIds(selectedClassIds.filter((id) => id !== classId))
+    } else {
       setSelectedClassIds([...selectedClassIds, classId])
     }
-    setShowClassDropdown(false)
   }
 
   // Get selected class objects for display (grades 6-12 only)
   const classesGrades6Plus = schoolClasses?.filter((c) => c.grade >= 6) || []
   const selectedClasses = classesGrades6Plus.filter((c) => selectedClassIds.includes(c.id))
-  const availableClasses = classesGrades6Plus.filter((c) => !selectedClassIds.includes(c.id))
 
-  const addSubject = (subject: string) => {
-    if (!subjects.includes(subject)) {
+  const toggleSubject = (subject: string) => {
+    if (subjects.includes(subject)) {
+      setSubjects(subjects.filter((s) => s !== subject))
+    } else {
       setSubjects([...subjects, subject])
     }
-    setShowSubjectDropdown(false)
   }
 
   const handleSave = async () => {
@@ -443,22 +445,26 @@ function UserProfileContent() {
                 </button>
                 {showSubjectDropdown && (
                   <div className="absolute top-full left-0 right-0 text-sm mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                    {subjectOptions.filter(s => !subjects.includes(s)).map((subject) => (
-                      <button
-                        key={subject}
-                        onClick={() => addSubject(subject)}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
-                      >
-                        {subject}
-                      </button>
-                    ))}
+                    {uniqueSubjectOptions.map((subject) => {
+                      const isSelected = subjects.includes(subject)
+                      return (
+                        <button
+                          key={subject}
+                          onClick={() => toggleSubject(subject)}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm flex items-center justify-between gap-2"
+                        >
+                          <span>{subject}</span>
+                          {isSelected && <Check className="w-4 h-4 text-[#DF6647] shrink-0" strokeWidth={2.5} />}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                {subjects.map((subject) => (
+                {subjects.map((subject, idx) => (
                   <div
-                    key={subject}
+                    key={`${subject}-${idx}`}
                     className="flex items-center gap-1 bg-[#FFE5D9] border border-[#DF6647] rounded-full px-3 py-1"
                   >
                     <span className="text-[#DF6647] text-xs font-medium">{subject}</span>
@@ -483,19 +489,23 @@ function UserProfileContent() {
                 </button>
                 {showClassDropdown && (
                   <div className="absolute top-full left-0 right-0 text-sm mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                    {availableClasses.length > 0 ? (
-                      availableClasses.map((cls) => (
-                        <button
-                          key={cls.id}
-                          onClick={() => addClass(cls.id)}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
-                        >
-                          Class {cls.grade} {cls.section}
-                        </button>
-                      ))
+                    {classesGrades6Plus.length > 0 ? (
+                      classesGrades6Plus.map((cls) => {
+                        const isSelected = selectedClassIds.includes(cls.id)
+                        return (
+                          <button
+                            key={cls.id}
+                            onClick={() => toggleClass(cls.id)}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm flex items-center justify-between gap-2"
+                          >
+                            <span>Class {cls.grade} {cls.section}</span>
+                            {isSelected && <Check className="w-4 h-4 text-[#9B61FF] shrink-0" strokeWidth={2.5} />}
+                          </button>
+                        )
+                      })
                     ) : (
                       <div className="px-4 py-2 text-gray-500 text-sm">
-                        {selectedClasses.length > 0 ? "All classes selected" : "No classes available in your school"}
+                        No classes available in your school
                       </div>
                     )}
                   </div>
@@ -584,25 +594,29 @@ function UserProfileContent() {
 
                   {/* Dropdown Menu */}
                   {showSubjectDropdown && (
-                    <div className="absolute top-full left-0 right-0 text-sm mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                      {subjectOptions.map((subject) => (
-                        <button
-                          key={subject}
-                          onClick={() => addSubject(subject)}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
-                        >
-                          {subject}
-                        </button>
-                      ))}
+                    <div className="absolute top-full left-0 right-0 text-sm mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                      {uniqueSubjectOptions.map((subject) => {
+                        const isSelected = subjects.includes(subject)
+                        return (
+                          <button
+                            key={subject}
+                            onClick={() => toggleSubject(subject)}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm flex items-center justify-between gap-2"
+                          >
+                            <span>{subject}</span>
+                            {isSelected && <Check className="w-4 h-4 text-[#DF6647] shrink-0" strokeWidth={2.5} />}
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
 
                 {/* Selected Subjects Tags */}
                 <div className="flex flex-wrap gap-3">
-                  {subjects.map((subject) => (
+                  {subjects.map((subject, idx) => (
                     <div
-                      key={subject}
+                      key={`${subject}-${idx}`}
                       className="flex items-center gap-2 bg-white border border-[#4612CF87] rounded-md px-4 py-2"
                     >
                       <span className="text-gray-800 text-sm font-medium">{subject}</span>
@@ -631,19 +645,23 @@ function UserProfileContent() {
                   {/* Dropdown Menu */}
                   {showClassDropdown && (
                     <div className="absolute top-full left-0 right-0 text-sm mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                      {availableClasses.length > 0 ? (
-                        availableClasses.map((cls) => (
-                          <button
-                            key={cls.id}
-                            onClick={() => addClass(cls.id)}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
-                          >
-                            Class {cls.grade} {cls.section}
-                          </button>
-                        ))
+                      {classesGrades6Plus.length > 0 ? (
+                        classesGrades6Plus.map((cls) => {
+                          const isSelected = selectedClassIds.includes(cls.id)
+                          return (
+                            <button
+                              key={cls.id}
+                              onClick={() => toggleClass(cls.id)}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm flex items-center justify-between gap-2"
+                            >
+                              <span>Class {cls.grade} {cls.section}</span>
+                              {isSelected && <Check className="w-4 h-4 text-[#9B61FF] shrink-0" strokeWidth={2.5} />}
+                            </button>
+                          )
+                        })
                       ) : (
                         <div className="px-4 py-2 text-gray-500 text-sm">
-                          {selectedClasses.length > 0 ? "All classes selected" : "No classes available in your school"}
+                          No classes available in your school
                         </div>
                       )}
                     </div>
@@ -788,9 +806,9 @@ function UserProfileContent() {
                 <div className="pt-2">
                   <p className="text-xs text-gray-500 mb-2">Subjects</p>
                   <div className="flex flex-wrap justify-center gap-2">
-                    {subjects.map((subject) => (
+                    {subjects.map((subject, idx) => (
                       <span
-                        key={subject}
+                        key={`${subject}-${idx}`}
                         className="px-2 py-1 bg-[#FFE5D9] text-[#DF6647] text-xs font-medium rounded-full"
                       >
                         {subject}

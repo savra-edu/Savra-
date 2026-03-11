@@ -25,6 +25,8 @@ async function main() {
     { name: 'Maths', code: 'MATH' },
     { name: 'Science', code: 'SCI' },
     { name: 'English', code: 'ENG' },
+    { name: 'Hindi', code: 'HINDI' },
+    { name: 'Social Science', code: 'SOCSCI' },
     { name: 'History', code: 'HIST' },
     { name: 'Geography', code: 'GEO' },
     { name: 'Physics', code: 'PHY' },
