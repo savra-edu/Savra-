@@ -1,20 +1,34 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import HomeHeader from "@/features/teacher/home/components/home-header";
 import { QuickActions } from "@/features/teacher/home/components/quick-actions";
 import { RecentActivity } from "@/features/teacher/home/components/recent-activity";
 import AccountSetup from "@/features/teacher/login/components/account-setup";
+import { useAuth } from "@/contexts/auth-context"
+
+function getOnboardingCompleted(user: { onboardingCompleted?: boolean; profile?: { onboardingCompleted?: boolean } } | null): boolean {
+  if (!user) return false
+  return user.onboardingCompleted ?? (user.profile as { onboardingCompleted?: boolean })?.onboardingCompleted ?? false
+}
 
 function HomePageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user } = useAuth()
   const [showSetup, setShowSetup] = useState(false)
+  const onboardingCompleted = getOnboardingCompleted(user)
 
   useEffect(() => {
     const setup = searchParams.get("setup")
+    if (user?.role === "teacher" && onboardingCompleted && setup === "true") {
+      router.replace("/home")
+      setShowSetup(false)
+      return
+    }
     setShowSetup(setup === "true")
-  }, [searchParams])
+  }, [searchParams, user?.role, onboardingCompleted, router])
 
   if (showSetup) {
     return <AccountSetup />

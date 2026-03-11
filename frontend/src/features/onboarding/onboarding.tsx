@@ -2,14 +2,43 @@
 
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
 const INTENT_SIGNUP = 'signup';
 
 export default function Onboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, isLoading } = useAuth();
   const intent = searchParams.get('intent');
   const isSignup = intent === INTENT_SIGNUP;
+
+  // If already logged in, redirect to the appropriate dashboard
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) return;
+    const onboardingCompleted = user.onboardingCompleted ?? (user as { profile?: { onboardingCompleted?: boolean } })?.profile?.onboardingCompleted ?? false;
+    if (user.role === 'teacher' && !onboardingCompleted) {
+      router.replace('/home?setup=true');
+      return;
+    }
+    const redirectMap: Record<string, string> = {
+      teacher: '/home',
+      student: '/student-home',
+      admin: '/admin-dashboard',
+    };
+    router.replace(redirectMap[user.role] || '/');
+  }, [user, isLoading, router]);
+
+  // Show loading while checking auth, or nothing while redirecting
+  if (isLoading || user) {
+    return (
+      <div className="min-h-screen w-full bg-[#F9F9F9] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#DF6647] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const handleStudentClick = () => {
     router.push(isSignup ? '/student/signup' : '/student/login');

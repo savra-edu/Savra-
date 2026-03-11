@@ -77,6 +77,10 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
 
   const handleSaveDraft = async () => {
     if (!assessmentId) return
+    // Already draft — no-op to avoid "Cannot change status from draft to draft" error
+    if (assessment?.status === "draft") {
+      return
+    }
     setIsSaving(true)
     try {
       await api.patch(`/assessments/${assessmentId}/status`, { status: "draft" })
@@ -352,10 +356,10 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
               </button>
               <button
                 onClick={handleSaveDraft}
-                disabled={isSaving}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm disabled:opacity-50"
+                disabled={isSaving || assessment?.status === "draft"}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-[#B595FF] hover:bg-[#A085EF] text-white rounded-xl font-semibold text-sm disabled:opacity-50 disabled:cursor-default"
               >
-                <FileText size={18} /> {isSaving ? "Saving..." : "Save draft"}
+                <FileText size={18} /> {assessment?.status === "draft" ? "Saved" : isSaving ? "Saving..." : "Save draft"}
               </button>
               <button
                 onClick={handleShare}
@@ -413,10 +417,10 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
               </button>
               <button
                 onClick={handleSaveDraft}
-                disabled={isSaving}
-                className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium disabled:opacity-50 hover:bg-[#D5D2E3]"
+                disabled={isSaving || assessment?.status === "draft"}
+                className="flex text-sm items-center gap-2 px-4 py-2 bg-[#E2DFF0] text-gray-700 rounded-lg font-medium disabled:opacity-50 disabled:cursor-default hover:bg-[#D5D2E3]"
               >
-                <FileText size={18} /> {isSaving ? "Saving..." : "Save draft"}
+                <FileText size={18} /> {assessment?.status === "draft" ? "Saved" : isSaving ? "Saving..." : "Save draft"}
               </button>
               <DownloadDropdown
                 onDownloadPDF={handleAnswerKeyPDF}
