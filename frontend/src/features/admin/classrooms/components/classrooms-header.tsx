@@ -1,7 +1,6 @@
 "use client"
 
-import { Search } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import AdminSearchBar from "@/components/admin-search-bar"
 import {
     Select,
     SelectContent,
@@ -11,8 +10,6 @@ import {
 } from "@/components/ui/select"
 
 interface ClassroomsHeaderProps {
-    searchQuery?: string
-    onSearchChange?: (value: string) => void
     selectedSubject?: string
     onSubjectChange?: (value: string) => void
     selectedGrade?: string
@@ -20,8 +17,6 @@ interface ClassroomsHeaderProps {
 }
 
 export default function ClassroomsHeader({
-    searchQuery = "",
-    onSearchChange,
     selectedSubject = "all",
     onSubjectChange,
     selectedGrade = "all",
@@ -34,18 +29,7 @@ export default function ClassroomsHeader({
                 <p className="text-[#353535] text-base">An overview of the student activity</p>
             </div>
             <div className="flex items-center gap-4">
-                {/* Search Bar */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <Input
-                        type="text"
-                        placeholder="Ask Savra AI"
-                        value={searchQuery}
-                        onChange={(e) => onSearchChange?.(e.target.value)}
-                        className="pl-10 pr-4 py-2 w-64 rounded-full border border-gray-200 bg-white"
-                    />
-                </div>
-
+                <AdminSearchBar />
                 {/* Subject Filter */}
                 <Select value={selectedSubject} onValueChange={onSubjectChange}>
                     <SelectTrigger className="w-[140px] rounded-lg border border-gray-200 bg-white">

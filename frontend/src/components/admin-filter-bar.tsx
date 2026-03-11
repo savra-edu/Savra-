@@ -48,11 +48,21 @@ export function AdminFilterBar({
   const [subject, setSubject] = useState<string>(defaultSubject)
   const [isGradeDropdownOpen, setIsGradeDropdownOpen] = useState(false)
   
+  // Sync with parent when controlled
+  useEffect(() => {
+    setGrade(defaultGrade)
+    setSubject(defaultSubject)
+  }, [defaultGrade, defaultSubject])
+  
   // Initialize expanded grades based on default grade (e.g., if "7-C" is selected, expand Grade 7)
   const getInitialExpandedGrades = () => {
     if (defaultGrade && defaultGrade.includes("-")) {
       const gradeNum = parseInt(defaultGrade.split("-")[0])
       return new Set([gradeNum])
+    }
+    if (defaultGrade && defaultGrade !== "all" && !defaultGrade.includes(",")) {
+      const gradeNum = parseInt(defaultGrade)
+      if (!isNaN(gradeNum)) return new Set([gradeNum])
     }
     return new Set<number>()
   }
@@ -73,7 +83,7 @@ export function AdminFilterBar({
 
   const toggleGradeExpansion = (gradeNum: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    setExpandedGrades(prev => {
+    setExpandedGrades((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(gradeNum)) {
         newSet.delete(gradeNum)
@@ -84,12 +94,47 @@ export function AdminFilterBar({
     })
   }
 
+  const toggleSectionSelection = (gradeNum: number, section: string) => {
+    const sectionValue = `${gradeNum}-${section}`
+    const isWholeGrade = grade === String(gradeNum)
+    const allSectionsForGrade = gradeStructure.find((g) => g.grade === gradeNum)?.sections || []
+    const allSectionValues = allSectionsForGrade.map((s) => `${gradeNum}-${s}`)
+
+    let currentSections: string[]
+    if (isWholeGrade) {
+      currentSections = allSectionValues
+    } else if (grade.includes(",")) {
+      currentSections = grade.split(",").map((s) => s.trim()).filter((s) => s.startsWith(`${gradeNum}-`))
+    } else if (grade.includes("-") && grade.startsWith(`${gradeNum}-`)) {
+      currentSections = [grade]
+    } else {
+      currentSections = []
+    }
+
+    const isCurrentlySelected = currentSections.includes(sectionValue)
+    const newSections = isCurrentlySelected
+      ? currentSections.filter((s) => s !== sectionValue)
+      : [...currentSections.filter((s) => !s.startsWith(`${gradeNum}-`)), sectionValue]
+    const newValue = newSections.length === 0 ? "all" : newSections.join(", ")
+    handleGradeChange(newValue)
+  }
+
+  const isSectionSelected = (gradeNum: number, section: string) => {
+    const sectionValue = `${gradeNum}-${section}`
+    if (grade === "all") return false
+    if (grade === String(gradeNum)) return true
+    if (grade.includes(",")) return grade.split(",").map((s) => s.trim()).includes(sectionValue)
+    return grade === sectionValue
+  }
+
+  const isWholeGradeSelected = (gradeNum: number) => grade === String(gradeNum)
+
   const getGradeLabel = (value: string) => {
     if (value === "all") return "All Grades"
-    if (value.includes("-")) {
-      // Format like "7-C"
-      return value
+    if (value.includes(",")) {
+      return value.split(",").map((s) => s.trim()).join(", ")
     }
+    if (value.includes("-")) return value
     return `Grade ${value}`
   }
 
@@ -153,47 +198,66 @@ export function AdminFilterBar({
             {/* Grade Items with Sections */}
             {gradeStructure.map(({ grade: gradeNum, sections }) => {
               const isExpanded = expandedGrades.has(gradeNum)
-              const hasSelectedSection = sections.some(s => grade === `${gradeNum}-${s}`)
+              const hasSelection =
+                grade === String(gradeNum) ||
+                sections.some((s) => isSectionSelected(gradeNum, s))
 
               return (
                 <div key={gradeNum}>
-                  {/* Grade Header - Expandable */}
-                  <button
-                    onClick={(e) => toggleGradeExpansion(gradeNum, e)}
+                  {/* Grade Header: click text = select whole grade, click chevron = expand */}
+                  <div
                     className={cn(
-                      "w-full px-4 py-2 text-left text-sm font-medium",
+                      "flex items-center justify-between px-4 py-2 text-sm font-medium",
                       "hover:bg-[#F1E9FF] transition-colors",
-                      "flex items-center justify-between",
-                      hasSelectedSection && "bg-[#F1E9FF]"
+                      hasSelection && "bg-[#F1E9FF]"
                     )}
                   >
-                    <span>Grade {gradeNum}</span>
-                    {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-gray-600" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGradeChange(String(gradeNum))}
+                      className="flex-1 text-left"
+                    >
+                      Grade {gradeNum}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => toggleGradeExpansion(gradeNum, e)}
+                      className="p-0.5 hover:bg-[#E8DCF5] rounded"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-gray-600" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                      )}
+                    </button>
+                  </div>
 
-                  {/* Sections - Shown when expanded */}
+                  {/* Sections - multi-select when expanded */}
                   {isExpanded && (
                     <div className="bg-gray-50">
                       {sections.map((section) => {
                         const sectionValue = `${gradeNum}-${section}`
-                        const isSelected = grade === sectionValue
+                        const selected = isSectionSelected(gradeNum, section)
 
                         return (
-                          <button
+                          <label
                             key={sectionValue}
-                            onClick={() => handleGradeChange(sectionValue)}
                             className={cn(
-                              "w-full px-4 py-2 pl-10 text-left text-sm font-medium",
+                              "flex items-center gap-2 w-full px-4 py-2 pl-10 text-left text-sm font-medium cursor-pointer",
                               "hover:bg-[#F1E9FF] transition-colors",
-                              isSelected && "bg-[#9B61FF] text-white"
+                              selected && "bg-[#E8DCF5]"
                             )}
                           >
-                            {gradeNum}-{section}
-                          </button>
+                            <input
+                              type="checkbox"
+                              checked={selected || isWholeGradeSelected(gradeNum)}
+                              onChange={() => toggleSectionSelection(gradeNum, section)}
+                              className="rounded border-[#9B61FF] text-[#9B61FF] focus:ring-[#9B61FF]"
+                            />
+                            <span>
+                              {gradeNum}-{section}
+                            </span>
+                          </label>
                         )
                       })}
                     </div>
@@ -229,7 +293,7 @@ export function AdminFilterBar({
             <SelectItem
               key={subj}
               value={subj}
-              className="px-4 py-2 cursor-pointer font-medium data-[highlighted]:bg-[#F1E9FF]"
+              className="px-4 py-2 cursor-pointer font-medium data-highlighted:bg-[#F1E9FF]"
             >
               {subj}
             </SelectItem>
