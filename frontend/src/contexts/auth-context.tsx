@@ -9,12 +9,8 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-<<<<<<< HEAD
 import { googleLogout } from '@react-oauth/google';
-import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT } from '@/lib/api';
-=======
-import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT, ApiError } from '@/lib/api';
->>>>>>> origin/main
+import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT, ApiError } from '@/lib/api'
 import type { User, LoginRequest, LoginResponse, ApiResponse } from '@/types/api';
 
 interface RegisterRequest {
