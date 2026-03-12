@@ -46,7 +46,7 @@ export class ApiError extends Error {
 }
 
 /** Endpoints that must not trigger token refresh on 401 (prevents loops) */
-const NO_REFRESH_ENDPOINTS = ['/auth/refresh-token', '/auth/login'];
+const NO_REFRESH_ENDPOINTS = ['/auth/refresh-token', '/auth/login', '/auth/google'];
 
 function shouldAttemptRefresh(endpoint: string): boolean {
   return !NO_REFRESH_ENDPOINTS.some((noRefresh) => endpoint.includes(noRefresh));

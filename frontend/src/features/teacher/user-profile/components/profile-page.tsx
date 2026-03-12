@@ -56,7 +56,8 @@ interface TeacherProfile {
 
 function UserProfileContent() {
   const router = useRouter()
-  const { logout } = useAuth()
+  const { logout, user: authUser } = useAuth()
+  const isOAuthUser = authUser?.authMethod === "google"
   const { refetchTeacherData } = useData()
 
   // Fetch profile from API
@@ -218,7 +219,7 @@ function UserProfileContent() {
       return
     }
 
-    if (!deletePassword) {
+    if (!isOAuthUser && !deletePassword) {
       setDeleteError("Please enter your password")
       return
     }
@@ -228,7 +229,7 @@ function UserProfileContent() {
 
     try {
       await api.delete("/auth/account", {
-        password: deletePassword,
+        ...(isOAuthUser ? {} : { password: deletePassword }),
         confirmText: deleteConfirmText,
       })
 
@@ -291,18 +292,20 @@ function UserProfileContent() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter your password
-              </label>
-              <Input
-                type="password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                placeholder="Your password"
-                className="w-full"
-              />
-            </div>
+            {!isOAuthUser && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter your password
+                </label>
+                <Input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -329,7 +332,11 @@ function UserProfileContent() {
             <Button
               variant="destructive"
               onClick={handleConfirmDelete}
-              disabled={isDeleting || deleteConfirmText !== "DELETE MY ACCOUNT"}
+              disabled={
+                isDeleting ||
+                deleteConfirmText !== "DELETE MY ACCOUNT" ||
+                (!isOAuthUser && !deletePassword)
+              }
               className="bg-red-600 hover:bg-red-700"
             >
               {isDeleting ? (

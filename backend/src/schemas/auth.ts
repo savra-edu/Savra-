@@ -40,6 +40,17 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
+// Google auth schema (teachers only for now)
+export const googleAuthSchema = z.object({
+  credential: z
+    .string()
+    .min(1, 'Google credential is required')
+    .max(10000, 'Invalid credential'),
+  role: z.literal('teacher', {
+    errorMap: () => ({ message: 'Google sign-in is only supported for teachers' }),
+  }),
+});
+
 // Update profile schema
 export const updateProfileSchema = z.object({
   name: z
@@ -51,9 +62,9 @@ export const updateProfileSchema = z.object({
   subjectIds: z.array(z.string().uuid()).optional(),
 });
 
-// Delete account schema
+// Delete account schema - password optional for OAuth users (no password)
 export const deleteAccountSchema = z.object({
-  password: z.string().min(1, 'Password is required for verification'),
+  password: z.string().optional(),
   confirmText: z
     .string()
     .refine((val) => val === 'DELETE MY ACCOUNT', {
@@ -65,5 +76,6 @@ export const deleteAccountSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
