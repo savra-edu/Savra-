@@ -1,11 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, Download, Loader2 } from "lucide-react"
+import { ChevronLeft } from "lucide-react"
 import { AdminFilterBar } from "@/components/admin-filter-bar"
 import AdminSearchBar from "@/components/admin-search-bar"
-import { Button } from "@/components/ui/button"
 import { AdminClass } from "@/hooks/use-admin"
 
 interface StudentPerformanceHeaderProps {
@@ -14,38 +12,6 @@ interface StudentPerformanceHeaderProps {
 
 export default function StudentPerformanceHeader({ classData }: StudentPerformanceHeaderProps) {
     const className = classData.name || `Class ${classData.grade} ${classData.section}`
-    const [isExporting, setIsExporting] = useState(false)
-
-    const handleExport = async () => {
-        setIsExporting(true)
-        try {
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/admin/reports/export?type=class&classId=${classData.id}&format=csv`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            )
-
-            if (!response.ok) throw new Error('Export failed')
-
-            const blob = await response.blob()
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `class-${classData.grade}${classData.section}-report.csv`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-        } catch (err) {
-            console.error('Export failed:', err)
-            alert('Failed to export report. Please try again.')
-        } finally {
-            setIsExporting(false)
-        }
-    }
 
     return (
         <div className="flex flex-row justify-between items-center border-b border-gray-200 pb-6">
@@ -61,23 +27,6 @@ export default function StudentPerformanceHeader({ classData }: StudentPerforman
             <div className="flex items-center gap-4">
                 <AdminSearchBar />
                 <AdminFilterBar />
-                <Button
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className="bg-[#DF6647] hover:bg-[#DF6647]/90 text-white font-semibold px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
-                >
-                    {isExporting ? (
-                        <>
-                            <Loader2 size={18} className="animate-spin" />
-                            Exporting...
-                        </>
-                    ) : (
-                        <>
-                            <Download size={18} />
-                            Export Report
-                        </>
-                    )}
-                </Button>
             </div>
         </div>
     )

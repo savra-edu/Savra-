@@ -51,6 +51,31 @@ export interface AdminStudent {
   createdAt: string;
 }
 
+/** Extended student detail from GET /admin/students/:id (includes quiz analytics) */
+export interface AdminStudentDetail extends AdminStudent {
+  totalPoints?: number;
+  quizPerformance?: {
+    totalAttempts: number;
+    averageScore: number;
+    recentAttempts: Array<{
+      id: string;
+      quizTitle: string;
+      score: number | null;
+      totalMarks: number | null;
+      submittedAt: string | null;
+    }>;
+  };
+}
+
+export interface AdminClassStudent {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  rollNumber?: string | null;
+  totalPoints?: number;
+}
+
 export interface AdminClass {
   id: string;
   name: string;
@@ -59,6 +84,7 @@ export interface AdminClass {
   studentCount: number;
   teacherCount: number;
   averageScore?: number;
+  students?: AdminClassStudent[];
   teachers?: Array<{ id: string; name: string; email: string }>;
   createdAt: string;
 }
@@ -160,10 +186,10 @@ export function useAdminStudents(page = 1, limit = 20, classId?: string) {
 }
 
 /**
- * Fetch a single student by ID
+ * Fetch a single student by ID (includes quiz performance)
  */
 export function useAdminStudent(id: string | null) {
-  return useFetch<AdminStudent>(id ? `/admin/students/${id}` : null);
+  return useFetch<AdminStudentDetail>(id ? `/admin/students/${id}` : null);
 }
 
 /**

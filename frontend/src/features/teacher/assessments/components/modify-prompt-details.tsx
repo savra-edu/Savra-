@@ -79,7 +79,7 @@ export default function ModifyPromptDetails() {
     { name: "Long Answers", numQuestions: "10", totalMarks: "10" },
     { name: "Case Study", numQuestions: "10", totalMarks: "10" },
   ])
-  const [selectedBooks, setSelectedBooks] = useState<string[]>(["NCERT Textbook (default)", "XAM Ideas", "Oswald Question Bank"])
+  const [selectedBooks, setSelectedBooks] = useState<string[]>(["NCERT Textbook (default)", "XAM Ideas", "Oswaal Question Bank"])
   const [isAddTypeDialogOpen, setIsAddTypeDialogOpen] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -132,7 +132,7 @@ export default function ModifyPromptDetails() {
     setSelectedChapters((prev) => (prev.includes(chapter) ? prev.filter((c) => c !== chapter) : [...prev, chapter]))
   }
 
-  const books = ["NCERT Textbook (default)", "XAM Ideas", "All in ONE", "Oswald Question Bank"]
+  const books = ["NCERT Textbook (default)", "XAM Ideas", "All in ONE", "Oswaal Question Bank"]
 
   const toggleBook = (book: string) => {
     if (selectedBooks.includes(book)) {

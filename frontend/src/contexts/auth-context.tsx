@@ -9,8 +9,12 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+<<<<<<< HEAD
 import { googleLogout } from '@react-oauth/google';
 import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT } from '@/lib/api';
+=======
+import { api, setTokens, clearTokens, getToken, AUTH_SESSION_EXPIRED_EVENT, ApiError } from '@/lib/api';
+>>>>>>> origin/main
 import type { User, LoginRequest, LoginResponse, ApiResponse } from '@/types/api';
 
 interface RegisterRequest {
@@ -51,9 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await api.get<ApiResponse<User>>('/auth/me');
       setUser(response.data);
-    } catch {
-      clearTokens();
-      setUser(null);
+    } catch (err) {
+      // Only clear tokens on definitive auth failures — avoid logout on transient 500/network errors
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        clearTokens();
+        setUser(null);
+      } else {
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -62,6 +71,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check auth on mount
   useEffect(() => {
     checkAuth();
+  }, [checkAuth]);
+
+  // Re-validate session when tab becomes visible (helps maintain session across tab switches)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && getToken()) {
+        checkAuth();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [checkAuth]);
+
+  // Sync auth state across tabs when another tab logs in/out (localStorage changes)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'token' && e.newValue) {
+        checkAuth();
+      }
+      if ((e.key === 'token' || e.key === 'refreshToken') && e.newValue === null) {
+        setUser(null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [checkAuth]);
 
   // Handle session expired (e.g. refresh token failed) — clear user so AuthGuard redirects
@@ -79,11 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(response.data.accessToken, response.data.refreshToken);
     setUser(response.data.user);
 
-    // Redirect based on role
     const user = response.data.user;
+    const onboardingCompleted = user.onboardingCompleted ?? (user as { profile?: { onboardingCompleted?: boolean } })?.profile?.onboardingCompleted ?? false;
 
-    // Check if teacher needs onboarding
-    if (user.role === 'teacher' && !user.onboardingCompleted) {
+    if (user.role === 'teacher' && !onboardingCompleted) {
       router.push('/home?setup=true');
       return;
     }

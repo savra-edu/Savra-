@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { AdminSidebar } from "@/components/admin-sidebar"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -37,11 +37,16 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isAskSavraPage = pathname === "/admin/ask-savra"
+
   return (
     <AuthGuard>
       <main className="h-screen flex flex-row w-screen overflow-x-hidden">
-        <AdminSidebar />
-        <div className="flex-1 ml-64 p-6 max-w-full overflow-x-hidden flex flex-col h-full">
+        {!isAskSavraPage && <AdminSidebar />}
+        <div
+          className={`flex-1 max-w-full overflow-x-hidden flex flex-col h-full ${isAskSavraPage ? "w-full" : "ml-64 p-6"}`}
+        >
           {children}
         </div>
       </main>

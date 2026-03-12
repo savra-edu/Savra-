@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { QuizObjectiveSection } from "@/features/teacher/quiz/components/objective-section"
-import { FileUploadSection } from "@/features/teacher/lesson-plan/components/file-upload-section"
 import { GeneratingOverlay } from "@/components/generating-overlay"
 import { Button } from "@/components/ui/button"
+import { Upload } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { useChapters } from "@/hooks/use-chapters"
@@ -39,6 +39,7 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
     const [timeLimit, setTimeLimit] = useState<string>("20")
     const [objective, setObjective] = useState<string>("")
     const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -218,37 +219,61 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
                     <QuizObjectiveSection objective={objective} onObjectiveChange={setObjective} title="Quiz Objective (optional)" />
                 </div>
 
-                {/* Upload Reference Material Section */}
-                <div className="mb-6">
-                    <h3 className="text-base font-bold text-black mb-4">Upload Reference Material</h3>
-                    <FileUploadSection onFileUpload={handleFileUpload} uploadedFileName={uploadedFile?.name} />
-                </div>
             </div>
 
             {/* Fixed Bottom Section */}
-            <div className="flex-shrink-0 border-t border-gray-200 pt-4 lg:pt-6 mt-4 bg-white">
-                {/* Error Message */}
+            <div className="shrink-0 border-t border-gray-200 pt-4 lg:pt-6 mt-4 bg-white">
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
                         {error}
                     </div>
                 )}
-                {/* Generate Button */}
-                <div className="flex justify-center lg:justify-end gap-2">
-                    <Button className="border border-[#DF6647] text-[#DF6647] bg-white px-6 py-4 lg:py-6 rounded-xl hover:bg-[#DF6647]/10 font-semibold">
-                        View Drafts
-                    </Button>
-                    <Button
-                        onClick={handleGenerate}
-                        disabled={!isFormValid || isLoading}
-                        className={`px-6 py-4 lg:py-6 rounded-xl font-semibold text-white transition-all ${
-                            isFormValid && !isLoading
-                                ? "bg-[#DF6647] hover:bg-[#FF5A35] shadow-lg hover:shadow-xl cursor-pointer"
-                                : "bg-[#B5B5B5] opacity-60 cursor-not-allowed"
-                        }`}
-                    >
-                        {isLoading ? "Generating..." : "Generate Quiz"}
-                    </Button>
+                <h3 className="text-base font-bold text-black mb-4">Upload Reference Material</h3>
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                    if (file.size > 10 * 1024 * 1024) {
+                                        alert('File size exceeds 10MB limit. Please choose a smaller file.')
+                                        e.target.value = ''
+                                        return
+                                    }
+                                    handleFileUpload(file)
+                                }
+                            }}
+                            className="hidden"
+                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp"
+                        />
+                        <Button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="bg-[#B595FF] hover:bg-[#A085EF] text-white w-[250px] py-4 lg:py-6 rounded-xl font-semibold cursor-pointer flex items-center justify-center gap-2"
+                        >
+                            <Upload className="w-4 h-4" />
+                            Upload a File
+                        </Button>
+                        {uploadedFile && <span className="text-sm text-gray-500">{uploadedFile.name}</span>}
+                    </div>
+                    <div className="flex gap-2">
+                        <Button className="border border-[#DF6647] text-[#DF6647] bg-white px-6 py-4 lg:py-6 rounded-xl hover:bg-[#DF6647]/10 font-semibold">
+                            View Drafts
+                        </Button>
+                        <Button
+                            onClick={handleGenerate}
+                            disabled={!isFormValid || isLoading}
+                            className={`px-6 py-4 lg:py-6 rounded-xl font-semibold text-white transition-all ${
+                                isFormValid && !isLoading
+                                    ? "bg-[#DF6647] hover:bg-[#FF5A35] shadow-lg hover:shadow-xl cursor-pointer"
+                                    : "bg-[#B5B5B5] opacity-60 cursor-not-allowed"
+                            }`}
+                        >
+                            {isLoading ? "Generating..." : "Generate Quiz"}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

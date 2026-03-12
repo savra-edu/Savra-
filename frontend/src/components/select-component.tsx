@@ -28,20 +28,20 @@ export function SubjectSelect({
   subjects,
   disabled,
 }: SubjectSelectProps) {
-  const subjectList = subjects && subjects.length > 0 ? subjects : []
+  const subjectList = subjects && subjects.length > 0 ? [...new Set(subjects)] : []
 
   return (
     <Select value={value || undefined} onValueChange={onValueChange} disabled={disabled || subjectList.length === 0}>
       <SelectTrigger
         className={cn(
-          "w-[120px] h-14 p-2 bg-white ",
+          "w-[120px] h-14 p-2 bg-white border-0",
           "text-[#353535] font-medium",
           className
         )}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent className="w-[120px] bg-white p-1">
+      <SelectContent className="w-[120px] max-h-60 overflow-y-auto bg-white p-1" side="bottom" position="popper">
         {subjectList.map((subject) => (
           <SelectItem
             key={subject}
@@ -206,7 +206,7 @@ export function ClassSelect({
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-72 overflow-y-auto" side="bottom" position="popper">
           {classesByGrade.map((c) => {
             const itemValue = `Class: ${c.grade} ${c.section}`
             return (
