@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, Content, Part } from '@google/generative-ai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { buildCbseMathPromptSection } from './cbse-math-blueprint';
 
 const SUPPORTED_REFERENCE_MIME: Record<string, string> = {
   'application/pdf': 'application/pdf',
@@ -726,6 +727,9 @@ export const generateAssessment = async (
 
     const objectiveText = objective ? `\n\nAssessment Objective/Focus: ${objective}` : '';
 
+    // CBSE Math blueprint (Class 11 / 12) — returns empty string for other subjects/grades
+    const cbseMathSection = buildCbseMathPromptSection(subject, grade, totalMarks);
+
     // Subject-specific general instructions from Assessment Template.pdf
     const subjectInstructionsMap: Record<string, string[]> = {
       'English': [
@@ -856,7 +860,7 @@ export const generateAssessment = async (
 
 Topics: ${chapters.join(', ')}
 Difficulty: ${difficulty}
-Question distribution: ${typesDescription}${objectiveText}${pdfReferenceText}
+Question distribution: ${typesDescription}${objectiveText}${pdfReferenceText}${cbseMathSection}
 
 IMPORTANT REQUIREMENTS:
 1. Number questions SEQUENTIALLY across ALL sections (1, 2, 3, 4, 5... not 1, 11, 21).
@@ -877,35 +881,50 @@ Return a JSON object with this structure:
       "type": "mcq",
       "title": "Section A - Multiple Choice Questions",
       "instructions": "Choose the correct option.",
+      "marksInfo": "20 × 1 = 20",
       "questions": [
         { "number": 1, "text": "Question text?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1, "answer": "Option 2" },
-        { "number": 2, "text": "Another question?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1, "answer": "Option 3" }
+        { "number": 2, "text": "Another question?", "options": ["Option 1", "Option 2", "Option 3", "Option 4"], "marks": 1, "answer": "Option 3" },
+        { "number": 19, "text": "Assertion (A): [Statement 1]\\nReason (R): [Statement 2]", "options": ["Both A and R true, R correct explanation", "Both true, R not explanation", "A true, R false", "A false, R true"], "marks": 1, "answer": "...", "type": "assertion_reasoning" }
       ]
     },
     {
       "type": "short_answer",
       "title": "Section B - Short Answer",
       "instructions": "Answer in 2-3 sentences.",
+      "marksInfo": "5 × 2 = 10",
       "questions": [
-        { "number": 3, "text": "Question text?", "marks": 2, "answer": "A concise model answer." }
+        { "number": 3, "text": "Question text?", "marks": 2, "answer": "A concise model answer.", "orText": "Alternative question with OR choice?", "orAnswer": "Alternative model answer." }
       ]
     },
     {
-      "type": "assertion_reasoning",
-      "title": "Section - Assertion and Reason",
-      "instructions": "Choose the correct option for each question.",
+      "type": "case_study",
+      "title": "Section E - Case Study",
+      "instructions": "Case study based questions.",
+      "marksInfo": "3 × 4 = 12",
       "questions": [
-        { "number": 4, "text": "Assertion: [Statement 1]. Reason: [Statement 2].", "options": ["Both Assertion and Reason are true and Reason is the correct explanation of Assertion", "Both Assertion and Reason are true but Reason is NOT the correct explanation of Assertion", "Assertion is true but Reason is false", "Assertion is false but Reason is true", "Both Assertion and Reason are false"], "marks": 1, "answer": "Both Assertion and Reason are true and Reason is the correct explanation of Assertion" }
+        { "number": 36, "text": "[Case study scenario]\\n\\nBased on the above information, answer the following questions:\\n(i) Sub-question 1 [1]\\n(ii) Sub-question 2 [1]\\n(iii) (a) Sub-question 3a [2]\\nOR\\n(iii) (b) Sub-question 3b [2]", "marks": 4, "answer": "..." }
       ]
     }
   ]
 }
 
+Field notes:
+- "marksInfo": string showing "count × marks = total" for the section header
+- "orText": optional string with OR alternative question (for internal choice)
+- "orAnswer": optional string with answer for the OR alternative
+- "type": optional string on individual questions, e.g. "assertion_reasoning"
+- For case studies, embed sub-parts and OR alternatives directly in the "text" field
+
 Only return valid JSON.`;
+
+    const cbseMathSystemNote = cbseMathSection
+      ? ' You MUST strictly follow the CBSE Mathematics Question Paper Blueprint provided in the prompt — unit-wise marks distribution, Bloom\'s taxonomy cognitive-level distribution, and 33% internal choice rules are MANDATORY and must not be deviated from.'
+      : '';
 
     const model = genAI.getGenerativeModel({
       model: DEFAULT_MODEL,
-      systemInstruction: `You are an expert assessment designer who creates question papers following CBSE/board standards. ${fileParts.length > 0 ? 'You must reference and follow the assessment frameworks and guidelines from the attached documents, as well as the format, style, and question patterns from any sample question papers provided.' : ''}`,
+      systemInstruction: `You are an expert assessment designer who creates question papers following CBSE/board standards.${cbseMathSystemNote} ${fileParts.length > 0 ? 'You must reference and follow the assessment frameworks and guidelines from the attached documents, as well as the format, style, and question patterns from any sample question papers provided.' : ''}`,
       generationConfig: {
         temperature: 0.7,
         responseMimeType: 'application/json',

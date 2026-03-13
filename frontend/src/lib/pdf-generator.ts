@@ -439,12 +439,15 @@ interface AssessmentQuestion {
   type?: string
   marks?: number
   answer?: string
+  orText?: string
+  orAnswer?: string
 }
 
 interface AssessmentSection {
   name?: string
   title?: string
   instructions?: string
+  marksInfo?: string
   questions: AssessmentQuestion[]
 }
 
@@ -490,8 +493,11 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
   // Subject and Class info
   const subject = assessment.subject?.name || "Subject"
   const grade = assessment.class ? `${assessment.class.grade}-${assessment.class.section}` : ""
+  const gradeNumber = assessment.class?.grade
   const chapter = assessment.chapters?.map(c => c.name).join(", ") || ""
   const totalMarks = assessment.totalMarks || 100
+  const isMathSubject = ["mathematics", "maths"].includes(subject.trim().toLowerCase())
+  const isCbseMathPaper = isMathSubject && (gradeNumber === 11 || gradeNumber === 12)
 
   doc.setFontSize(11)
   doc.setFont("helvetica", "bold")
@@ -527,6 +533,28 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
     "All questions are compulsory.",
     "Show necessary steps for full marks.",
   ]
+  const sections = questionPaper?.sections || []
+  const questions = questionPaper?.questions || sections.flatMap(s => s.questions) || []
+
+  const ensurePageSpace = (neededHeight = 12) => {
+    if (yPos + neededHeight > 280) {
+      doc.addPage()
+      yPos = 15
+    }
+  }
+
+  const drawWrappedText = (
+    text: string,
+    x: number,
+    width: number,
+    lineHeight: number,
+    options?: { align?: "left" | "center" | "right" }
+  ) => {
+    const lines = doc.splitTextToSize(normalizeScientificText(text), width)
+    doc.text(lines, x, yPos, options)
+    yPos += lines.length * lineHeight
+    return lines
+  }
 
   doc.setFontSize(10)
   doc.setFont("helvetica", "bold")
@@ -550,18 +578,115 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
   // Questions
   doc.setFontSize(10)
-  const questions = questionPaper?.questions || questionPaper?.sections?.flatMap(s => s.questions) || []
 
-  // If we have sections, render with section headers
-  if (questionPaper?.sections && questionPaper.sections.length > 0) {
-    for (const section of questionPaper.sections) {
-      // Check page break
+  if (isCbseMathPaper && sections.length > 0) {
+    for (const section of sections) {
+      ensurePageSpace(18)
+
+      const sectionTitle = section.title || section.name || "Section"
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(sectionTitle, pageWidth / 2, yPos, { align: "center" })
+      if (section.marksInfo) {
+        doc.setFontSize(10)
+        doc.text(section.marksInfo, pageWidth - margin, yPos, { align: "right" })
+      }
+      yPos += 6
+
+      if (section.instructions) {
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(10)
+        drawWrappedText(section.instructions, margin, contentWidth - 20, 4.5)
+        yPos += 2
+      }
+
+      let arDirectionShown = false
+      for (const question of section.questions) {
+        const isAssertionReasoning = question.type === "assertion_reasoning"
+
+        if (isAssertionReasoning && !arDirectionShown) {
+          ensurePageSpace(30)
+          doc.setFont("helvetica", "bold")
+          doc.setFontSize(10)
+          doc.text("Assertion - Reason Based Questions", pageWidth / 2, yPos, { align: "center" })
+          yPos += 5
+
+          doc.setFont("helvetica", "normal")
+          doc.setFontSize(9)
+          drawWrappedText(
+            "Direction : Two statements are given, one labelled Assertion (A) and one labelled Reason (R). Select the correct answer from the options (A), (B), (C) and (D) as given below.",
+            margin,
+            contentWidth,
+            4.2
+          )
+          ;[
+            "(A) Both Assertion (A) and Reason (R) are true and the Reason (R) is the correct explanation of the Assertion (A).",
+            "(B) Both Assertion (A) and Reason (R) are true, but Reason (R) is not the correct explanation of the Assertion (A).",
+            "(C) Assertion (A) is true, but Reason (R) is false.",
+            "(D) Assertion (A) is false, but Reason (R) is true.",
+          ].forEach((line) => {
+            drawWrappedText(line, margin + 3, contentWidth - 3, 4.2)
+          })
+          yPos += 2
+          arDirectionShown = true
+        }
+
+        ensurePageSpace(18)
+        const qNum = `${question.number || 1}.`
+        const qTextX = margin + 10
+
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(10)
+        doc.text(qNum, margin, yPos)
+        doc.setFont("helvetica", "normal")
+
+        const qLines = doc.splitTextToSize(normalizeScientificText(question.text || ""), contentWidth - 22)
+        doc.text(qLines, qTextX, yPos)
+
+        if (question.marks != null) {
+          doc.setFontSize(8)
+          doc.setTextColor(100, 100, 100)
+          doc.text(`[${question.marks} mark${question.marks > 1 ? "s" : ""}]`, pageWidth - margin, yPos, { align: "right" })
+          doc.setTextColor(0, 0, 0)
+          doc.setFontSize(10)
+        }
+
+        yPos += qLines.length * 4.5 + 1
+
+        if (question.options && question.options.length > 0) {
+          const optionLabels = ["A", "B", "C", "D", "E", "F"]
+          for (let j = 0; j < question.options.length; j++) {
+            ensurePageSpace(8)
+            const optText = `(${optionLabels[j]}) ${normalizeScientificText(question.options[j] || "")}`
+            const optLines = doc.splitTextToSize(optText, contentWidth - 18)
+            doc.text(optLines, qTextX, yPos)
+            yPos += optLines.length * 4 + 0.8
+          }
+        }
+
+        if (question.orText) {
+          ensurePageSpace(12)
+          doc.setFont("helvetica", "bold")
+          doc.text("OR", pageWidth / 2, yPos, { align: "center" })
+          yPos += 4.5
+          doc.setFont("helvetica", "normal")
+          const orLines = doc.splitTextToSize(normalizeScientificText(question.orText), contentWidth - 22)
+          doc.text(orLines, qTextX, yPos)
+          yPos += orLines.length * 4.5 + 1
+        }
+
+        yPos += 4
+      }
+
+      yPos += 3
+    }
+  } else if (sections.length > 0) {
+    for (const section of sections) {
       if (yPos > 270) {
         doc.addPage()
         yPos = 15
       }
 
-      // Section title
       doc.setFont("helvetica", "bold")
       doc.setFontSize(11)
       doc.text(section.title || section.name || "Section", margin, yPos)
@@ -585,7 +710,6 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
           yPos = 15
         }
 
-        // Question text
         doc.setFont("helvetica", "bold")
         const qNum = `Q${question.number || 1}.`
         doc.text(qNum, margin, yPos)
@@ -596,7 +720,6 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
         const qLines = doc.splitTextToSize(qText, contentWidth - 20)
         doc.text(qLines, qTextX, yPos)
 
-        // Marks
         if (question.marks) {
           doc.setFontSize(8)
           doc.setTextColor(100, 100, 100)
@@ -607,7 +730,6 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
         yPos += qLines.length * 5 + 2
 
-        // Options
         if (question.options && question.options.length > 0) {
           const optionLabels = ["a", "b", "c", "d", "e", "f"]
           for (let j = 0; j < question.options.length; j++) {
@@ -628,7 +750,6 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
       yPos += 5
     }
   } else {
-    // Flat questions without sections
     for (let i = 0; i < questions.length; i++) {
       const question = questions[i]
 
@@ -701,11 +822,15 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
         }
 
         const answerText = normalizeScientificText(question.answer || "N/A")
+        const orAnswerText = question.orAnswer
+          ? normalizeScientificText(`OR: ${question.orAnswer}`)
+          : ""
 
         doc.setFont("helvetica", "bold")
         doc.text(`Q${question.number || 1}.`, margin, yPos)
         doc.setFont("helvetica", "normal")
-        const lines = doc.splitTextToSize(answerText, contentWidth - 20)
+        const answerBlock = orAnswerText ? `${answerText}\n${orAnswerText}` : answerText
+        const lines = doc.splitTextToSize(answerBlock, contentWidth - 20)
         doc.text(lines, margin + 10, yPos)
         yPos += lines.length * 5 + 3
       }

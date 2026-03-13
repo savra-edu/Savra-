@@ -21,6 +21,8 @@ interface Question {
   type?: string
   marks?: number
   answer?: string
+  orText?: string
+  orAnswer?: string
 }
 
 interface Section {
@@ -28,6 +30,7 @@ interface Section {
   title?: string
   type?: string
   instructions?: string
+  marksInfo?: string
   questions: Question[]
 }
 
@@ -57,6 +60,19 @@ interface QuestionPaperContentProps {
 
 function getQuestionKey(question: Question, idx: number, scope: string) {
   return `${scope}-${question.number ?? idx}-${question.text}`
+}
+
+function toRomanLower(n: number): string {
+  const lookup: [number, string][] = [[10, "x"], [9, "ix"], [5, "v"], [4, "iv"], [1, "i"]]
+  let result = ""
+  let remaining = n
+  for (const [value, numeral] of lookup) {
+    while (remaining >= value) {
+      result += numeral
+      remaining -= value
+    }
+  }
+  return result
 }
 
 function QuestionPaperContentInner({ onEditClick, isEditMode = false }: QuestionPaperContentProps) {
@@ -211,9 +227,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
 
   const subject = assessment?.subject?.name || "Mathematics"
   const grade = assessment?.class ? `${assessment.class.grade}-${assessment.class.section}` : "VII"
+  const gradeNumber = assessment?.class?.grade
   const chapter = assessment?.chapters?.map(c => c.name).join(", ") || "Fractions"
   const totalMarks = assessment?.totalMarks || 100
   const duration = 60 // Default duration since it's not in assessment schema
+  const isMathSubject = ["mathematics", "maths"].includes(subject.trim().toLowerCase())
+  const isCbseMathPaper = isMathSubject && (gradeNumber === 11 || gradeNumber === 12)
   const instructions = questionPaper?.instructions || [
     "All questions are compulsory.",
     "The question paper is designed to test understanding and application of concepts.",
@@ -272,40 +291,243 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
           <>
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 lg:py-6 border border-gray-200 rounded-b-2xl min-h-0">
-              <div className="flex justify-between items-start mb-6">
-                <div className="space-y-1">
-                  <p className="font-bold text-lg">Subject: {subject}</p>
-                  <p>Class: {grade}</p>
-                  <p>Chapter: {chapter}</p>
-                  <p>Time: {Math.floor(duration / 60)} Hour{duration >= 120 ? "s" : ""}{duration % 60 > 0 ? ` ${duration % 60} mins` : ""}</p>
-                </div>
-                <div>
-                  <p className="font-bold text-lg">Maximum Marks: {totalMarks}</p>
-                </div>
-              </div>
+              {isCbseMathPaper ? (
+                <>
+                  {/* ── Paper Header ── */}
+                  <div className="border-b-2 border-gray-800 pb-3 mb-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-0.5">
+                        <p className="text-sm"><span className="font-bold">Subject:</span> {subject}</p>
+                        <p className="text-sm"><span className="font-bold">Class:</span> {grade}</p>
+                      </div>
+                      <div className="text-right space-y-0.5">
+                        <p className="text-sm"><span className="font-bold">Maximum Marks:</span> {totalMarks}</p>
+                        <p className="text-sm"><span className="font-bold">Time Allowed:</span> {totalMarks >= 80 ? "3 Hours" : totalMarks >= 40 ? "2 Hours" : "1 Hour"}</p>
+                      </div>
+                    </div>
+                    {chapter && (
+                      <p className="text-sm mt-1.5"><span className="font-bold">Chapters:</span> {chapter}</p>
+                    )}
+                  </div>
 
-              <div className="mb-6">
-                <p className="font-bold mb-2">General Instructions:</p>
-                <ol className="list-decimal list-inside space-y-1 ml-2">
-                  {instructions.map((instruction, index) => (
-                    <li key={index}>{instruction}</li>
-                  ))}
-                </ol>
-              </div>
+                  {/* ── General Instructions ── */}
+                  <div className="mb-5">
+                    <p className="font-bold text-sm mb-0.5">General Instructions:</p>
+                    <p className="text-xs italic text-gray-600 mb-2">Read the following instructions very carefully and strictly follow them:</p>
+                    <div className="ml-4 space-y-0.5">
+                      {instructions.map((instruction, index) => (
+                        <p key={index} className="text-sm">
+                          <span className="font-semibold mr-1">({toRomanLower(index + 1)})</span>
+                          {instruction}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="mb-4">
-                {questionPaper?.sections && questionPaper.sections.length > 0 ? (
-                  questionPaper.sections.map((section, sectionIdx) => (
-                    <div key={sectionIdx} className="mb-6">
-                      <p className="font-bold text-lg mb-4">
-                        {section.title || section.name || `Section ${String.fromCharCode(65 + sectionIdx)}`}
-                      </p>
-                      {section.instructions && (
-                        <p className="text-sm text-gray-600 mb-3 italic">{section.instructions}</p>
-                      )}
+                  {/* ── Sections / Questions ── */}
+                  <div className="mb-4">
+                    {questionPaper?.sections && questionPaper.sections.length > 0 ? (
+                      questionPaper.sections.map((section, sectionIdx) => {
+                        const sectionTitle = section.title || section.name || `Section ${String.fromCharCode(65 + sectionIdx)}`
+                        const isCbseSection = /section/i.test(sectionTitle)
+                        let arDirectionShown = false
+
+                        return (
+                          <div key={sectionIdx} className="mb-6">
+                            <div className={`${isCbseSection ? "text-center" : ""} border-t border-gray-300 pt-4 mb-3`}>
+                              <h3 className="font-bold text-base tracking-wide">{sectionTitle}</h3>
+                              {(section.instructions || section.marksInfo) && (
+                                <div className={`flex ${section.marksInfo ? "justify-between" : "justify-start"} items-baseline mt-1 text-sm gap-4`}>
+                                  {section.instructions && (
+                                    <p className="italic text-gray-600 text-left">{section.instructions}</p>
+                                  )}
+                                  {section.marksInfo && (
+                                    <p className="font-semibold whitespace-nowrap">{section.marksInfo}</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-4">
+                              {section.questions.map((question, idx) => {
+                                const isAR = question.type === "assertion_reasoning"
+                                const showArDirection = isAR && !arDirectionShown
+                                if (showArDirection) arDirectionShown = true
+
+                                const questionText = normalizeScientificText(question.text || "")
+                                const textParts = questionText.split(/\nOR\n|\n\nOR\n\n/)
+
+                                return (
+                                  <div key={getQuestionKey(question, idx, `section-${sectionIdx}`)}>
+                                    {showArDirection && (
+                                      <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3 text-sm">
+                                        <p className="font-bold mb-1">Assertion – Reason Based Questions</p>
+                                        <p className="italic text-gray-700 text-xs leading-relaxed">
+                                          Direction: Two statements are given, one labelled Assertion (A) and the other labelled Reason (R). Select the correct answer from the options (A), (B), (C) and (D).
+                                        </p>
+                                        <div className="mt-1.5 ml-2 space-y-0.5 text-xs text-gray-600">
+                                          <p>(A) Both Assertion (A) and Reason (R) are true and Reason (R) is the correct explanation of Assertion (A).</p>
+                                          <p>(B) Both Assertion (A) and Reason (R) are true, but Reason (R) is not the correct explanation of Assertion (A).</p>
+                                          <p>(C) Assertion (A) is true, but Reason (R) is false.</p>
+                                          <p>(D) Assertion (A) is false, but Reason (R) is true.</p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="flex gap-2">
+                                      <span className="font-bold text-sm min-w-8 pt-0.5 shrink-0">
+                                        {question.number || idx + 1}.
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between gap-2">
+                                          <div className="flex-1 text-sm whitespace-pre-line wrap-break-word">
+                                            {textParts.length > 1 ? (
+                                              textParts.map((part, pi) => (
+                                                <span key={pi}>
+                                                  {pi > 0 && (
+                                                    <span className="block text-center font-bold my-2">OR</span>
+                                                  )}
+                                                  {part.trim()}
+                                                </span>
+                                              ))
+                                            ) : (
+                                              questionText
+                                            )}
+                                          </div>
+                                          {question.marks != null && (
+                                            <span className="text-xs font-semibold text-gray-500 whitespace-nowrap shrink-0 pt-0.5">
+                                              [{question.marks}]
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {question.options && question.options.length > 0 && (
+                                          <div className={`mt-2 ml-1 ${question.options.length <= 4 ? "grid grid-cols-2 gap-x-8 gap-y-1" : "space-y-1"}`}>
+                                            {question.options.map((option, oi) => (
+                                              <p key={oi} className="text-sm">
+                                                ({String.fromCharCode(65 + oi)}) {normalizeScientificText(option)}
+                                              </p>
+                                            ))}
+                                          </div>
+                                        )}
+
+                                        {question.orText && (
+                                          <div className="my-3">
+                                            <p className="text-center font-bold text-sm my-2">OR</p>
+                                            <p className="text-sm whitespace-pre-line wrap-break-word">
+                                              {normalizeScientificText(question.orText)}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="space-y-4">
+                        {questions.map((question, idx) => (
+                          <div key={getQuestionKey(question, idx, "flat")} className="flex gap-2">
+                            <span className="font-bold text-sm min-w-8 pt-0.5 shrink-0">
+                              {question.number || idx + 1}.
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between gap-2">
+                                <p className="flex-1 text-sm whitespace-pre-line wrap-break-word">
+                                  {normalizeScientificText(question.text)}
+                                </p>
+                                {question.marks != null && (
+                                  <span className="text-xs font-semibold text-gray-500 whitespace-nowrap shrink-0 pt-0.5">
+                                    [{question.marks}]
+                                  </span>
+                                )}
+                              </div>
+                              {question.options && question.options.length > 0 && (
+                                <div className={`mt-2 ml-1 ${question.options.length <= 4 ? "grid grid-cols-2 gap-x-8 gap-y-1" : "space-y-1"}`}>
+                                  {question.options.map((option, oi) => (
+                                    <p key={oi} className="text-sm">
+                                      ({String.fromCharCode(65 + oi)}) {normalizeScientificText(option)}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              {question.orText && (
+                                <div className="my-3">
+                                  <p className="text-center font-bold text-sm my-2">OR</p>
+                                  <p className="text-sm whitespace-pre-line wrap-break-word">
+                                    {normalizeScientificText(question.orText)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="space-y-1">
+                      <p className="font-bold text-lg">Subject: {subject}</p>
+                      <p>Class: {grade}</p>
+                      <p>Chapter: {chapter}</p>
+                      <p>Time: {Math.floor(duration / 60)} Hour{duration >= 120 ? "s" : ""}{duration % 60 > 0 ? ` ${duration % 60} mins` : ""}</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-lg">Maximum Marks: {totalMarks}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="font-bold mb-2">General Instructions:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                      {instructions.map((instruction, index) => (
+                        <li key={index}>{instruction}</li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  <div className="mb-4">
+                    {questionPaper?.sections && questionPaper.sections.length > 0 ? (
+                      questionPaper.sections.map((section, sectionIdx) => (
+                        <div key={sectionIdx} className="mb-6">
+                          <p className="font-bold text-lg mb-4">
+                            {section.title || section.name || `Section ${String.fromCharCode(65 + sectionIdx)}`}
+                          </p>
+                          {section.instructions && (
+                            <p className="text-sm text-gray-600 mb-3 italic">{section.instructions}</p>
+                          )}
+                          <div className="space-y-6">
+                            {section.questions.map((question, idx) => (
+                              <div key={getQuestionKey(question, idx, `section-${sectionIdx}`)} className="space-y-2">
+                                <p className="font-semibold wrap-break-word">
+                                  Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
+                                  {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
+                                </p>
+                                {question.options && question.options.length > 0 && (
+                                  <div className="ml-4 space-y-1">
+                                    {question.options.map((option, index) => (
+                                      <p key={index}>
+                                        {String.fromCharCode(97 + index)}) {normalizeScientificText(option)}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
                       <div className="space-y-6">
-                        {section.questions.map((question, idx) => (
-                          <div key={getQuestionKey(question, idx, `section-${sectionIdx}`)} className="space-y-2">
+                        {questions.map((question, idx) => (
+                          <div key={getQuestionKey(question, idx, "flat")} className="space-y-2">
                             <p className="font-semibold wrap-break-word">
                               Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
                               {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
@@ -322,30 +544,10 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                           </div>
                         ))}
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="space-y-6">
-                    {questions.map((question, idx) => (
-                      <div key={getQuestionKey(question, idx, "flat")} className="space-y-2">
-                        <p className="font-semibold wrap-break-word">
-                          Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
-                          {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
-                        </p>
-                        {question.options && question.options.length > 0 && (
-                          <div className="ml-4 space-y-1">
-                            {question.options.map((option, index) => (
-                              <p key={index}>
-                                {String.fromCharCode(97 + index)}) {normalizeScientificText(option)}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
 
             {/* Footer Actions */}
