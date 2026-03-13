@@ -43,6 +43,7 @@ export function FeatureCard({
               alt="Feature icon"
               width={72}
               height={72}
+              sizes="72px"
               className="w-12 h-12 md:w-16 md:h-16 lg:w-[72px] lg:h-[72px]"
             />
           </div>
@@ -72,6 +73,7 @@ export function FeatureCard({
                 alt="Secondary desktop screenshot"
                 width={600}
                 height={400}
+                sizes="(max-width: 1024px) 100vw, 45vw"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -88,6 +90,7 @@ export function FeatureCard({
                 alt="Main desktop screenshot"
                 width={600}
                 height={400}
+                sizes="(max-width: 1024px) 100vw, 45vw"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -112,6 +115,7 @@ export function FeatureCard({
                   alt="Generated Plan mobile screenshot"
                   width={150}
                   height={150}
+                  sizes="(max-width: 768px) 96px, (max-width: 1024px) 128px, 150px"
                   className={`w-24 h-24 md:w-32 md:h-32 lg:w-full lg:h-full object-cover ${isLessonPlan ? 'border-2 border-black rounded-3xl' : ''}`}
                 />
             )}
@@ -123,6 +127,7 @@ export function FeatureCard({
                   alt="Create Lesson Plan mobile screenshot"
                   width={150}
                   height={250}
+                  sizes="(max-width: 768px) 96px, (max-width: 1024px) 128px, 250px"
                   className={`w-24 h-40 md:w-32 md:h-52 lg:w-full lg:h-full object-cover ${isLessonPlan || isGamified ? 'border-2 border-black rounded-3xl' : ''}`}
                 />
             )}

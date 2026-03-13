@@ -133,7 +133,7 @@ export default function LessonDetails() {
               className="w-full px-6 py-4 flex items-center gap-4 bg-[#F5F5F5] transition"
             >
               <div>
-                <Image src="/images/intro.png" alt="Introduction" width={30} height={50} />
+                <Image src="/images/intro.png" alt="Introduction" width={30} height={50} sizes="30px" />
               </div>
               <span className="flex-1 text-left font-semibold text-basetext-gray-900">Introduction (5 mins)</span>
               <div className="text-purple-500">
@@ -170,7 +170,7 @@ export default function LessonDetails() {
               className="w-full px-6 py-4 flex items-center gap-4 bg-[#F5F5F5] transition"
             >
               <div>
-                <Image src="/images/intro.png" alt="Introduction" width={30} height={50} />
+                <Image src="/images/intro.png" alt="Introduction" width={30} height={50} sizes="30px" />
               </div>
               <span className="flex-1 text-left font-semibold text-gray-900">Core Explanation (20 mins)</span>
               <div className="text-purple-500">

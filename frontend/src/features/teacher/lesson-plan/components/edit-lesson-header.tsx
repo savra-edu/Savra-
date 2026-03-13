@@ -6,8 +6,10 @@ import { SubjectSelect, ClassSelect } from "../../../../components/select-compon
 import Link from "next/link"
 import { ChevronLeft, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useSearchParams } from "next/navigation"
 import { useTeacherSubjects } from "@/hooks/use-subjects"
 import { useTeacherClasses } from "@/hooks/use-classes"
+import { getHistoryAwareBackHref } from "@/lib/history-navigation"
 
 interface EditLessonHeaderProps {
     className?: string
@@ -19,8 +21,10 @@ interface EditLessonHeaderProps {
 }
 
 export function EditLessonHeader({ className, isEditMode = false, onEditClick, lessonTitle, minimal = false }: EditLessonHeaderProps) {
+    const searchParams = useSearchParams()
     const { data: subjects } = useTeacherSubjects()
     const { data: classes } = useTeacherClasses()
+    const backHref = getHistoryAwareBackHref(searchParams.get("from"), "/lesson-plan")
 
     const [subject, setSubject] = useState<string>("")
     const [classValue, setClassValue] = useState<string>("")
@@ -56,7 +60,7 @@ export function EditLessonHeader({ className, isEditMode = false, onEditClick, l
         return (
             <div className={`flex items-center justify-between border-b border-gray-200 pb-4 gap-4 ${className || ""}`}>
                 <div className="flex items-center gap-3">
-                    <Link href="/lesson-plan" className="shrink-0">
+                    <Link href={backHref} className="shrink-0">
                         <ChevronLeft className="w-8 h-8 text-black cursor-pointer hover:opacity-80" />
                     </Link>
                     <h1 className="text-lg lg:text-xl font-bold text-[#242220] truncate">
@@ -72,7 +76,7 @@ export function EditLessonHeader({ className, isEditMode = false, onEditClick, l
         <div className={`flex flex-col lg:flex-row lg:justify-between lg:items-center border-b border-gray-200 pb-4 lg:pb-6 gap-4 ${className || ""}`}>
             <div className="lg:hidden flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Link href="/lesson-plan">
+                    <Link href={backHref}>
                         <ChevronLeft className="w-6 h-6 text-black cursor-pointer" />
                     </Link>
                     <h1 className="text-base font-bold text-[#242220]">Generated Plan</h1>
@@ -81,7 +85,7 @@ export function EditLessonHeader({ className, isEditMode = false, onEditClick, l
             </div>
 
             <div className="hidden lg:flex items-center gap-4">
-                <Link href="/lesson-plan">
+                <Link href={backHref}>
                     <ChevronLeft className="w-12 h-12 text-black rounded-full p-4 bg-[#F5F5F5] cursor-pointer hover:bg-[#E5E5E5] transition-colors" />
                 </Link>
                 <h1 className="text-3xl font-bold text-[#242220]">Edit Lesson Plan</h1>

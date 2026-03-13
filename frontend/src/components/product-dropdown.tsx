@@ -46,7 +46,7 @@ export default function ProductDropdown() {
 
         {/* Right Section - Placeholder Image */}
         <div className="hidden md:flex flex-1 p-6 items-center justify-center">
-          <Image src="/dropdown.svg" alt="Product Dropdown" width={200} height={200} />
+          <Image src="/dropdown.svg" alt="Product Dropdown" width={200} height={200} sizes="200px" />
         </div>
       </div>
     </div>

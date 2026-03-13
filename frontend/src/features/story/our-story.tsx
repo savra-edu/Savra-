@@ -27,8 +27,8 @@ export default function OurStory() {
 
                         {/* Right - Images Stacked */}
                         <div className="flex flex-col gap-4 md:gap-6 w-full lg:w-1/3">
-                            <Image className="rounded-2xl w-full h-auto" src="/image1.png" alt="Story" width={400} height={400} />
-                            <Image className="rounded-2xl w-full h-auto" src="/image2.png" alt="Story" width={400} height={400} />
+                            <Image className="rounded-2xl w-full h-auto" src="/image1.png" alt="Story" width={400} height={400} sizes="(max-width: 768px) 100vw, 33vw" />
+                            <Image className="rounded-2xl w-full h-auto" src="/image2.png" alt="Story" width={400} height={400} sizes="(max-width: 768px) 100vw, 33vw" />
                         </div>
                     </div>
                 </div>
@@ -42,7 +42,7 @@ export default function OurStory() {
                             <h2 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl w-full md:w-[500px] font-bold text-black leading-tight">
                                 Why are we building Savra
                             </h2>
-                            <Image src="/decor.png" alt="Circle" width={450} height={450} className="relative -left-20 md:-left-92 w-32 md:w-auto hidden md:block" />
+                            <Image src="/decor.png" alt="Circle" width={450} height={450} sizes="450px" className="relative -left-20 md:-left-92 w-32 md:w-auto hidden md:block" />
                         </div>
                         <div className="text-sm md:text-base lg:text-lg text-[#010D3E] leading-relaxed space-y-3 md:space-y-4">
                             <p>
@@ -60,6 +60,7 @@ export default function OurStory() {
                                 alt="why"
                                 width={200}
                                 height={400}
+                                sizes="(max-width: 768px) 96px, (max-width: 1024px) 128px, 200px"
                                 className="rounded-2xl w-24 md:w-32 lg:w-[200px] h-auto"
                             />
                             <Image
@@ -67,6 +68,7 @@ export default function OurStory() {
                                 alt="why"
                                 width={350}
                                 height={200}
+                                sizes="(max-width: 768px) 160px, (max-width: 1024px) 224px, 350px"
                                 className="rounded-2xl w-40 md:w-56 lg:w-[350px] h-auto"
                             />
                         </div>
@@ -75,6 +77,7 @@ export default function OurStory() {
                             alt="why"
                             width={600}
                             height={600}
+                            sizes="(max-width: 768px) 192px, (max-width: 1024px) 256px, 600px"
                             className="rounded-3xl w-48 md:w-64 lg:w-[600px] h-auto"
                         />
                     </div> 

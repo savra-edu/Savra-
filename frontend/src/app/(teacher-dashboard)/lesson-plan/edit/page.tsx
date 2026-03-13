@@ -4,7 +4,7 @@ import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import EditLessonDetails from "@/features/teacher/lesson-plan/components/edit-lesson-details";
 import { EditLessonHeader } from "@/features/teacher/lesson-plan/components/edit-lesson-header";
-import { useFetch } from "@/hooks/use-api"
+import { queryKeys, useApiQuery } from "@/hooks/use-query"
 import { Lesson } from "@/types/api"
 
 function EditLessonPageContent() {
@@ -12,10 +12,11 @@ function EditLessonPageContent() {
     const lessonId = searchParams.get("id")
     const [isEditMode, setIsEditMode] = useState(false)
 
-    const { data: lesson, isLoading, error, refetch } = useFetch<Lesson>(
-        lessonId ? `/lessons/${lessonId}` : "",
-        !!lessonId
-    )
+    const { data: lesson, isLoading, error, refetch } = useApiQuery<Lesson>({
+        queryKey: queryKeys.lesson(lessonId ?? "missing"),
+        endpoint: `/lessons/${lessonId}`,
+        enabled: !!lessonId,
+    })
 
     if (!lessonId) {
         return (
@@ -45,7 +46,7 @@ function EditLessonPageContent() {
             <div className="flex flex-col h-full p-4 lg:p-8">
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
-                        <p className="text-red-500 mb-4">Error loading lesson: {error}</p>
+                        <p className="text-red-500 mb-4">Error loading lesson: {error?.message || "Request failed"}</p>
                         <button
                             onClick={() => refetch()}
                             className="px-4 py-2 bg-[#DF6647] text-white rounded-lg"

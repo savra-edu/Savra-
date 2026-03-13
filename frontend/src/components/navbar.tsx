@@ -41,8 +41,8 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between h-16 md:h-24">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1 md:gap-2">
-          <Image src="/logo1.png" alt="Logo" width={24} height={24} className="md:w-[30px] md:h-[30px]" />
-          <Image src="/logo2.png" alt="Logo" width={60} height={60} className="md:w-[80px] md:h-[80px]" />
+          <Image src="/logo1.png" alt="Logo" width={24} height={24} sizes="30px" className="md:w-[30px] md:h-[30px]" />
+          <Image src="/logo2.png" alt="Logo" width={60} height={60} sizes="80px" className="md:w-[80px] md:h-[80px]" />
         </Link>
 
         {/* Desktop Center Navigation */}

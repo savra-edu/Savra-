@@ -14,7 +14,7 @@ export function ObjectiveSection({ objective, onObjectiveChange }: ObjectiveSect
         <h3 className="text-base font-bold text-[#000000]">Lesson Objective</h3>
         <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
           <span className="text-sm font-medium">Enhance prompt</span>
-          <Image src="/images/magic-wand.svg" alt="magic wand" width={24} height={24} />
+          <Image src="/images/magic-wand.svg" alt="magic wand" width={24} height={24} sizes="24px" />
         </button>
       </div>
       <textarea

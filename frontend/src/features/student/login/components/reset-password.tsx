@@ -55,6 +55,7 @@ export function ResetPassword() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />
@@ -148,6 +149,7 @@ export function ResetPassword() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />

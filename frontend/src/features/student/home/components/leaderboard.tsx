@@ -91,6 +91,7 @@ export function Leaderboard() {
                   alt={students[1].name}
                   width={56}
                   height={56}
+                  sizes="56px"
                   className="rounded-full"
                   unoptimized
                 />
@@ -122,6 +123,7 @@ export function Leaderboard() {
                   alt={students[0].name}
                   width={72}
                   height={72}
+                  sizes="72px"
                   className="rounded-full"
                   unoptimized
                 />
@@ -153,6 +155,7 @@ export function Leaderboard() {
                   alt={students[2].name}
                   width={56}
                   height={56}
+                  sizes="56px"
                   className="rounded-full"
                   unoptimized
                 />

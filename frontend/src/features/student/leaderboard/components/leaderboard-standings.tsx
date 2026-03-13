@@ -131,6 +131,7 @@ export default function LeaderboardStandings({ searchQuery = "" }: LeaderboardSt
                   alt={topThree[1].name}
                   width={72}
                   height={72}
+                  sizes="72px"
                   className="rounded-full"
                   unoptimized
                 />
@@ -165,6 +166,7 @@ export default function LeaderboardStandings({ searchQuery = "" }: LeaderboardSt
                   alt={topThree[0].name}
                   width={88}
                   height={88}
+                  sizes="88px"
                   className="rounded-full"
                   unoptimized
                 />
@@ -199,6 +201,7 @@ export default function LeaderboardStandings({ searchQuery = "" }: LeaderboardSt
                   alt={topThree[2].name}
                   width={72}
                   height={72}
+                  sizes="72px"
                   className="rounded-full"
                   unoptimized
                 />
@@ -268,6 +271,7 @@ function StudentRow({ student }: { student: LeaderboardRanking }) {
           alt={student.name}
           width={40}
           height={40}
+          sizes="40px"
           className="rounded-full"
           unoptimized
         />

@@ -69,7 +69,7 @@ export function Sidebar() {
         >
             {/* Logo */}
             <div>
-                <Image src="/images/savra-logo.png" alt="Savra Logo" width={180} height={100} className="w-[163px] h-[140px]" />
+                <Image src="/images/savra-logo.png" alt="Savra Logo" width={180} height={100} sizes="163px" className="w-[163px] h-[140px]" />
             </div>
 
             {/* Navigation */}
@@ -126,6 +126,7 @@ export function Sidebar() {
                             alt={user.name || "User"}
                             width={48}
                             height={48}
+                            sizes="48px"
                             className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                         />
                     ) : (

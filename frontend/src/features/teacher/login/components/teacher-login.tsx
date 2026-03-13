@@ -70,6 +70,7 @@ export function TeacherLogin() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />
@@ -165,13 +166,14 @@ export function TeacherLogin() {
               type="button"
               className="w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
             >
-              <Image
-                src="https://www.apple.com/favicon.ico"
-                alt="Apple"
-                width={24}
-                height={24}
-                className="w-6 h-6 object-contain"
-              />
+            <Image
+              src="https://www.apple.com/favicon.ico"
+              alt="Apple"
+              width={24}
+              height={24}
+              sizes="24px"
+              className="w-6 h-6 object-contain"
+            />
             </button>
           </div>
 
@@ -203,6 +205,7 @@ export function TeacherLogin() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />

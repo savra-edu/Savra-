@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Tabs } from "@/components/tabs-section"
 import { ContentItem } from "@/features/teacher/history/components/content-items"
 import { SortDropdown } from "@/features/teacher/history/components/sort-dropdown"
-import { useFetch } from "@/hooks/use-api"
 import { SavraChatList } from "@/features/teacher/history/components/savra-chat-list"
+import { queryKeys, useApiQuery } from "@/hooks/use-query"
+import { appendHistorySource } from "@/lib/history-navigation"
 
 const TABS = ["All", "Lessons", "Quizzes", "Question Papers", "Notice", "Savra AI"]
 
@@ -23,6 +24,9 @@ interface HistoryResponse {
   items: HistoryItem[]
   total: number
 }
+
+let lastHistoryActiveTab = "All"
+let lastHistorySortBy = "Date"
 
 // Map tab names to API types
 const TAB_TO_TYPE: Record<string, string> = {
@@ -44,11 +48,11 @@ const TYPE_TO_BADGE: Record<string, { label: string; color: "pink" | "blue" | "o
 function getHistoryItemHref(type: string, id: string): string {
   switch (type) {
     case "lesson":
-      return `/lesson-plan/edit?id=${id}`
+      return appendHistorySource(`/lesson-plan/edit?id=${id}`)
     case "quiz":
-      return `/quiz/generated?id=${id}`
+      return appendHistorySource(`/quiz/generated?id=${id}`)
     case "assessment":
-      return `/assessments/create/question-paper?id=${id}`
+      return appendHistorySource(`/assessments/create/question-paper?id=${id}`)
     case "announcement":
       return "/announcements"
     default:
@@ -57,19 +61,27 @@ function getHistoryItemHref(type: string, id: string): string {
 }
 
 export default function HistoryHero() {
-  const [activeTab, setActiveTab] = useState("All")
-  const [sortBy, setSortBy] = useState("Date")
+  const [activeTab, setActiveTab] = useState(lastHistoryActiveTab)
+  const [sortBy, setSortBy] = useState(lastHistorySortBy)
 
   const apiType = TAB_TO_TYPE[activeTab] || "all"
   const sortParam = sortBy.toLowerCase()
   const isSavraAITab = activeTab === "Savra AI"
 
-  const { data: historyResponse, isLoading, error } = useFetch<HistoryResponse>(
-    isSavraAITab ? null : `/teacher/history?type=${apiType}&sort=${sortParam}`
-  )
+  const {
+    data: historyResponse,
+    isLoading,
+    error,
+  } = useApiQuery<HistoryResponse>({
+    queryKey: queryKeys.teacherHistory(apiType, sortParam),
+    endpoint: `/teacher/history?type=${apiType}&sort=${sortParam}`,
+    enabled: !isSavraAITab,
+  })
 
-  // Extract items array from response
-  const historyItems = historyResponse?.items || []
+  useEffect(() => {
+    lastHistoryActiveTab = activeTab
+    lastHistorySortBy = sortBy
+  }, [activeTab, sortBy])
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -96,6 +108,8 @@ export default function HistoryHero() {
   }
 
   const currentContent = useMemo(() => {
+    const historyItems = historyResponse?.items || []
+
     if (!historyItems || historyItems.length === 0) return []
 
     return historyItems.map((item) => {
@@ -113,7 +127,7 @@ export default function HistoryHero() {
         href: getHistoryItemHref(item.type, item.id)
       }
     })
-  }, [historyItems])
+  }, [historyResponse])
 
   return (
     <div>

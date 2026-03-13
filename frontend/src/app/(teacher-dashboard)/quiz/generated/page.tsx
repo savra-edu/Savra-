@@ -4,7 +4,7 @@ import { Suspense, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { GeneratedHeader } from "@/features/teacher/quiz/components/generated-header"
 import GeneratedQuiz from "@/features/teacher/quiz/components/generated-quiz"
-import { useFetch } from "@/hooks/use-api"
+import { queryKeys, useApiQuery } from "@/hooks/use-query"
 
 interface QuestionOption {
     id: string
@@ -56,16 +56,21 @@ function GeneratedQuizPageContent() {
     const quizId = searchParams.get("id")
 
     // Fetch quiz info
-    const { data: quiz, isLoading: quizLoading, error: quizError, refetch: refetchQuiz } = useFetch<Quiz>(
-        quizId ? `/quizzes/${quizId}` : "",
-        !!quizId
-    )
+    const quizQuery = useApiQuery<Quiz>({
+        queryKey: queryKeys.quiz(quizId ?? "missing"),
+        endpoint: `/quizzes/${quizId}`,
+        enabled: !!quizId,
+    })
 
     // Fetch questions separately
-    const { data: questionsData, isLoading: questionsLoading, refetch: refetchQuestions } = useFetch<QuestionsResponse>(
-        quizId ? `/quizzes/${quizId}/questions` : "",
-        !!quizId
-    )
+    const questionsQuery = useApiQuery<QuestionsResponse>({
+        queryKey: queryKeys.quizQuestions(quizId ?? "missing"),
+        endpoint: `/quizzes/${quizId}/questions`,
+        enabled: !!quizId,
+    })
+
+    const { data: quiz, isLoading: quizLoading } = quizQuery
+    const { data: questionsData, isLoading: questionsLoading } = questionsQuery
 
     // Transform questions to expected format
     const transformedQuestions: TransformedQuestion[] = useMemo(() => {
@@ -95,11 +100,10 @@ function GeneratedQuizPageContent() {
     }, [quiz, transformedQuestions])
 
     const isLoading = quizLoading || questionsLoading
-    const error = quizError
+    const error = quizQuery.error ?? questionsQuery.error
 
-    const refetch = () => {
-        refetchQuiz()
-        refetchQuestions()
+    const refetch = async () => {
+        await Promise.all([quizQuery.refetch(), questionsQuery.refetch()])
     }
 
     if (!quizId) {
@@ -130,7 +134,7 @@ function GeneratedQuizPageContent() {
             <div className="flex flex-col h-full p-4 lg:p-8">
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
-                        <p className="text-red-500 mb-4">Error loading quiz: {error}</p>
+                        <p className="text-red-500 mb-4">Error loading quiz: {error?.message || "Request failed"}</p>
                         <button
                             onClick={() => refetch()}
                             className="px-4 py-2 bg-[#DF6647] text-white rounded-lg"
@@ -146,7 +150,7 @@ function GeneratedQuizPageContent() {
     return (
         <div className="flex flex-col h-full p-4 lg:p-8">
             <GeneratedHeader
-                className="flex-shrink-0 mb-4"
+                className="shrink-0 mb-4"
                 quizTitle={quizWithQuestions?.title}
             />
             <div className="flex-1 min-h-0 overflow-hidden">

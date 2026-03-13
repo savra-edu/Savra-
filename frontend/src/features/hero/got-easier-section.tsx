@@ -39,6 +39,7 @@ export default function GotEasier(){
                   alt={card.title}
                   width={300}
                   height={300}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="w-full h-full object-contain"
                 />
               </div>

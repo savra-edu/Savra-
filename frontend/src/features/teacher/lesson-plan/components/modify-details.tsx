@@ -173,7 +173,7 @@ export default function ModifyDetails() {
                     <div className="mb-6">
                         <div className="bg-[#EFE9F8] rounded-lg px-4 py-3 flex items-center justify-between border border-[#F6F6F9] mb-0">
                             <h3 className="text-base font-bold text-[#000000]">Lesson Objective</h3>
-                            <Image src="/images/magic-wand.svg" alt="magic wand" width={24} height={24} />
+                            <Image src="/images/magic-wand.svg" alt="magic wand" width={24} height={24} sizes="24px" />
                         </div>
                         <textarea
                             value={objective}
@@ -280,7 +280,7 @@ export default function ModifyDetails() {
                         <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex justify-between items-center pt-4 pb-2 px-2 bg-[#EFE9F8] rounded-t-lg border border-[#F6F6F9]">
                                 <h2 className="font-bold text-lg text-[#242220]">Modify Prompt</h2>
-                                <Image src="/images/magic-wand.svg" alt="magic wand" width={24} height={24} />
+                                <Image src="/images/magic-wand.svg" alt="magic wand" width={24} height={24} sizes="24px" />
                             </div>
                             <textarea
                                 value={objective}

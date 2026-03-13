@@ -27,23 +27,17 @@ router.get(
     try {
       const userId = req.user!.id;
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatarUrl: true,
-        },
-      });
-
-      if (!user) {
-        return notFoundResponse(res, 'User not found');
-      }
-
       const teacher = await prisma.teacher.findUnique({
         where: { userId },
         select: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
           id: true,
           location: true,
           teacherRole: true,
@@ -79,11 +73,15 @@ router.get(
         },
       });
 
+      if (!teacher?.user) {
+        return notFoundResponse(res, 'Teacher profile not found');
+      }
+
       return successResponse(res, {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        profileImage: user.avatarUrl,
+        id: teacher.user.id,
+        name: teacher.user.name,
+        email: teacher.user.email,
+        profileImage: teacher.user.avatarUrl,
         school: teacher?.school || null,
         subjects: teacher?.subjects.map(s => s.subject.name) || [],
         classes: teacher?.classes.map(c => c.class) || [],
@@ -1385,7 +1383,82 @@ router.get(
         orderBy = { class: { grade: 'asc' } };
       }
 
-      // Fetch data based on type
+      // Only include saved items (exclude 'generated' - not yet saved by user)
+      const savedStatuses = ['draft', 'saved', 'published'] as const;
+      const sortOrder = sort === 'title' ? { title: 'asc' as const } : { createdAt: 'desc' as const };
+
+      // Build parallel queries based on requested type
+      const fetchLessons = (type === 'all' || type === 'lesson')
+        ? prisma.lesson.findMany({
+            where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              createdAt: true,
+              subject: { select: { name: true } },
+              class: { select: { grade: true, section: true } },
+            },
+            orderBy: sortOrder,
+            take: type === 'all' ? 50 : 100,
+          })
+        : Promise.resolve([]);
+
+      const fetchQuizzes = (type === 'all' || type === 'quiz')
+        ? prisma.quiz.findMany({
+            where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              createdAt: true,
+              subject: { select: { name: true } },
+              class: { select: { grade: true, section: true } },
+            },
+            orderBy: sortOrder,
+            take: type === 'all' ? 50 : 100,
+          })
+        : Promise.resolve([]);
+
+      const fetchAssessments = (type === 'all' || type === 'assessment')
+        ? prisma.assessment.findMany({
+            where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              createdAt: true,
+              subject: { select: { name: true } },
+              class: { select: { grade: true, section: true } },
+            },
+            orderBy: sortOrder,
+            take: type === 'all' ? 50 : 100,
+          })
+        : Promise.resolve([]);
+
+      const fetchAnnouncements = (type === 'all' || type === 'announcement')
+        ? prisma.announcement.findMany({
+            where: { teacherId: teacher.id },
+            select: {
+              id: true,
+              title: true,
+              createdAt: true,
+              class: { select: { grade: true, section: true } },
+            },
+            orderBy: sortOrder,
+            take: type === 'all' ? 50 : 100,
+          })
+        : Promise.resolve([]);
+
+      // Run all queries concurrently
+      const [lessons, quizzes, assessments, announcements] = await Promise.all([
+        fetchLessons,
+        fetchQuizzes,
+        fetchAssessments,
+        fetchAnnouncements,
+      ]);
+
+      // Map results to unified history items
       const historyItems: Array<{
         id: string;
         type: string;
@@ -1396,122 +1469,53 @@ router.get(
         status?: string;
       }> = [];
 
-      // Only include saved items (exclude 'generated' - not yet saved by user)
-      const savedStatuses = ['draft', 'saved', 'published'] as const;
+      historyItems.push(
+        ...lessons.map((l) => ({
+          id: l.id,
+          type: 'lesson' as const,
+          title: l.title || 'Untitled Lesson',
+          subject: l.subject?.name || 'Unknown',
+          targetClass: l.class ? `Class ${l.class.grade}-${l.class.section}` : 'Unknown',
+          createdAt: l.createdAt,
+          status: l.status,
+        }))
+      );
 
-      // Fetch lessons
-      if (type === 'all' || type === 'lesson') {
-        const lessons = await prisma.lesson.findMany({
-          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            createdAt: true,
-            subject: { select: { name: true } },
-            class: { select: { grade: true, section: true } },
-          },
-          orderBy: sort === 'title' ? { title: 'asc' } : { createdAt: 'desc' },
-          take: type === 'all' ? 50 : 100,
-        });
+      historyItems.push(
+        ...quizzes.map((q) => ({
+          id: q.id,
+          type: 'quiz' as const,
+          title: q.title || 'Untitled Quiz',
+          subject: q.subject?.name || 'Unknown',
+          targetClass: q.class ? `Class ${q.class.grade}-${q.class.section}` : 'Unknown',
+          createdAt: q.createdAt,
+          status: q.status,
+        }))
+      );
 
-        historyItems.push(
-          ...lessons.map((l) => ({
-            id: l.id,
-            type: 'lesson' as const,
-            title: l.title || 'Untitled Lesson',
-            subject: l.subject?.name || 'Unknown',
-            targetClass: l.class ? `Class ${l.class.grade}-${l.class.section}` : 'Unknown',
-            createdAt: l.createdAt,
-            status: l.status,
-          }))
-        );
-      }
+      historyItems.push(
+        ...assessments.map((a) => ({
+          id: a.id,
+          type: 'assessment' as const,
+          title: a.title || 'Untitled Assessment',
+          subject: a.subject?.name || 'Unknown',
+          targetClass: a.class ? `Class ${a.class.grade}-${a.class.section}` : 'Unknown',
+          createdAt: a.createdAt,
+          status: a.status,
+        }))
+      );
 
-      // Fetch quizzes
-      if (type === 'all' || type === 'quiz') {
-        const quizzes = await prisma.quiz.findMany({
-          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            createdAt: true,
-            subject: { select: { name: true } },
-            class: { select: { grade: true, section: true } },
-          },
-          orderBy: sort === 'title' ? { title: 'asc' } : { createdAt: 'desc' },
-          take: type === 'all' ? 50 : 100,
-        });
-
-        historyItems.push(
-          ...quizzes.map((q) => ({
-            id: q.id,
-            type: 'quiz' as const,
-            title: q.title || 'Untitled Quiz',
-            subject: q.subject?.name || 'Unknown',
-            targetClass: q.class ? `Class ${q.class.grade}-${q.class.section}` : 'Unknown',
-            createdAt: q.createdAt,
-            status: q.status,
-          }))
-        );
-      }
-
-      // Fetch assessments (question papers)
-      if (type === 'all' || type === 'assessment') {
-        const assessments = await prisma.assessment.findMany({
-          where: { teacherId: teacher.id, status: { in: [...savedStatuses] } },
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            createdAt: true,
-            subject: { select: { name: true } },
-            class: { select: { grade: true, section: true } },
-          },
-          orderBy: sort === 'title' ? { title: 'asc' } : { createdAt: 'desc' },
-          take: type === 'all' ? 50 : 100,
-        });
-
-        historyItems.push(
-          ...assessments.map((a) => ({
-            id: a.id,
-            type: 'assessment' as const,
-            title: a.title || 'Untitled Assessment',
-            subject: a.subject?.name || 'Unknown',
-            targetClass: a.class ? `Class ${a.class.grade}-${a.class.section}` : 'Unknown',
-            createdAt: a.createdAt,
-            status: a.status,
-          }))
-        );
-      }
-
-      // Fetch announcements
-      if (type === 'all' || type === 'announcement') {
-        const announcements = await prisma.announcement.findMany({
-          where: { teacherId: teacher.id },
-          select: {
-            id: true,
-            title: true,
-            createdAt: true,
-            class: { select: { grade: true, section: true } },
-          },
-          orderBy: sort === 'title' ? { title: 'asc' } : { createdAt: 'desc' },
-          take: type === 'all' ? 50 : 100,
-        });
-
-        historyItems.push(
-          ...announcements.map((a) => ({
-            id: a.id,
-            type: 'announcement' as const,
-            title: a.title || 'Untitled Announcement',
-            subject: 'Notice',
-            targetClass: a.class ? `Class ${a.class.grade}-${a.class.section}` : 'All Classes',
-            createdAt: a.createdAt,
-            status: 'published',
-          }))
-        );
-      }
+      historyItems.push(
+        ...announcements.map((a) => ({
+          id: a.id,
+          type: 'announcement' as const,
+          title: a.title || 'Untitled Announcement',
+          subject: 'Notice',
+          targetClass: a.class ? `Class ${a.class.grade}-${a.class.section}` : 'All Classes',
+          createdAt: a.createdAt,
+          status: 'published',
+        }))
+      );
 
       // Sort combined results
       if (sort === 'date') {

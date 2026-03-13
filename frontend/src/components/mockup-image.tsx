@@ -26,6 +26,7 @@ export default function MockupImage({
           alt="Web Application Mockup"
           width={webAppWidth}
           height={webAppHeight}
+          sizes="(max-width: 768px) 300px, (max-width: 1024px) 400px, 500px"
           className="rounded-lg shadow-lg object-contain w-full max-w-[300px] md:max-w-[400px] lg:max-w-[500px] h-auto"
           style={{
             filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))',
@@ -47,6 +48,7 @@ export default function MockupImage({
           alt="Mobile Phone Mockup"
           width={phoneWidth}
           height={phoneHeight}
+          sizes="(max-width: 768px) 96px, (max-width: 1024px) 128px, 200px"
           className="rounded-md object-contain w-24 md:w-32 lg:w-[200px] h-auto"
           style={{
             filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))',

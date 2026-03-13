@@ -25,6 +25,7 @@ export default function TestimonialCard({
               alt={testimonial.name}
               width={48}
               height={48}
+              sizes="48px"
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
             />

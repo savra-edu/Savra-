@@ -1,6 +1,5 @@
 "use client"
 
-import SearchBar from "@/components/search-bar"
 import { SubjectSelect, ClassSelect } from "@/components/select-component"
 
 interface LessonPlanHeaderProps {
@@ -28,7 +27,7 @@ export function LessonPlanHeader({
 }: LessonPlanHeaderProps) {
 
     return (
-        <div className={`flex flex-col lg:flex-row lg:justify-between lg:items-center border-b border-gray-200 pb-4 lg:pb-6 gap-4 ${className || ""}`}>
+        <div className={`flex flex-col lg:flex-row lg:justify-between lg:items-center border-b border-gray-200 pb-4 lg:pb-6 gap-4 lg:gap-6 ${className || ""}`}>
             {/* Mobile Header */}
             <div className="lg:hidden flex items-center justify-between w-full">
                 <h1 className="text-xl font-bold text-[#242220]">Create Lesson Plan</h1>
@@ -54,11 +53,10 @@ export function LessonPlanHeader({
             </div>
 
             {/* Desktop Header */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:block shrink-0">
                 <h1 className="text-3xl font-bold text-[#242220]">Create Lesson Plan</h1>
             </div>
-            <div className="hidden lg:flex items-center gap-4">
-                <SearchBar />
+            <div className="hidden lg:flex items-center gap-4 xl:gap-5 ml-auto shrink-0">
                 <ClassSelect
                     value={classValue}
                     onValueChange={onClassChange}
@@ -66,6 +64,7 @@ export function LessonPlanHeader({
                     classes={classes || undefined}
                     disabled={isClassesLoading || !classes?.length}
                     variant="simple"
+                    className="w-[190px] h-12 px-5 shadow-sm"
                 />
                 <SubjectSelect
                     value={subject}
@@ -73,6 +72,7 @@ export function LessonPlanHeader({
                     placeholder={isSubjectsLoading ? "Loading..." : "Select Subject"}
                     subjects={subjects || undefined}
                     disabled={isSubjectsLoading || !subjects?.length}
+                    className="w-[180px] h-12 px-5 border border-[#E5D9FF] shadow-sm"
                 />
             </div>
         </div>

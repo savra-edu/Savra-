@@ -80,6 +80,7 @@ export default function CoreFeaturesCarousel({
             alt="Border" 
             width={1286} 
             height={557} 
+            sizes="100vw"
             className="absolute z-0 pointer-events-none hidden md:block"
             style={{ 
               top: '50%',

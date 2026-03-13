@@ -5,8 +5,10 @@ import SearchBar from "@/components/search-bar"
 import { SubjectSelect, ClassSelect } from "@/components/select-component"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 import { useTeacherSubjects } from "@/hooks/use-subjects"
 import { useTeacherClasses } from "@/hooks/use-classes"
+import { getHistoryAwareBackHref } from "@/lib/history-navigation"
 
 interface GeneratedHeaderProps {
     className?: string
@@ -14,8 +16,10 @@ interface GeneratedHeaderProps {
 }
 
 export function GeneratedHeader({ className, quizTitle }: GeneratedHeaderProps) {
+    const searchParams = useSearchParams()
     const { data: subjects } = useTeacherSubjects()
     const { data: classes } = useTeacherClasses()
+    const backHref = getHistoryAwareBackHref(searchParams.get("from"), "/quiz")
 
     const [subject, setSubject] = useState<string>("")
     const [classValue, setClassValue] = useState<string>("")
@@ -38,7 +42,7 @@ export function GeneratedHeader({ className, quizTitle }: GeneratedHeaderProps) 
             {/* Mobile Header */}
             <div className="lg:hidden flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Link href="/quiz">
+                    <Link href={backHref}>
                         <ChevronLeft className="w-6 h-6 text-black cursor-pointer" />
                     </Link>
                     <h1 className="text-base font-bold text-[#242220]">{quizTitle || "Generated Quiz"}</h1>
