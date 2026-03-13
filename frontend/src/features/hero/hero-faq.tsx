@@ -32,12 +32,12 @@ export default function HeroFAQ() {
       ];
     return (
         <div className="flex flex-col -mt-12 md:-mt-20 lg:-mt-24 justify-center items-center w-full">
-            <Image src="/books.svg" alt="FAQ" width={1000} height={1000} className="-mb-20 md:-mb-56 lg:-mb-72 z-500 w-full max-w-[600px] md:max-w-[800px] lg:max-w-[1000px] h-auto" />
+            <Image src="/books.svg" alt="FAQ" width={1000} height={1000} sizes="(max-width: 768px) 100vw, (max-width: 1024px) 800px, 1000px" className="-mb-20 md:-mb-56 lg:-mb-72 z-500 w-full max-w-[600px] md:max-w-[800px] lg:max-w-[1000px] h-auto" />
             <div className="px-4 md:px-6 lg:px-8">
                 <FAQAccordion items={faqItems} />
             </div>
             <div className="w-full">
-            <Image src="/cloud.svg" alt="FAQ" width={1000} height={1000} className="-mt-20 md:-mt-40 lg:-mt-130 z-600 w-full h-auto" />
+            <Image src="/cloud.svg" alt="FAQ" width={1000} height={1000} sizes="100vw" className="-mt-20 md:-mt-40 lg:-mt-130 z-600 w-full h-auto" />
             </div>
             <h1 className="text-[80px] md:text-[120px] lg:text-[180px] text-[#C7AFFF] font-bold opacity-40">
                 SAVRA

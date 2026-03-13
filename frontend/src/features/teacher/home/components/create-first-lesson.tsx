@@ -23,7 +23,7 @@ export function CreateFirstLesson() {
                     </div>
 
                     <div className="flex items-center justify-center">
-                        <Image src="/images/announcements.svg" alt="Create first lesson" width={250} height={300} className="scale-x-[-1]" />
+                        <Image src="/images/announcements.svg" alt="Create first lesson" width={250} height={300} sizes="250px" className="scale-x-[-1]" />
                     </div>
 
                 </div>

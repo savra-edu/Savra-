@@ -19,9 +19,9 @@ export default function Footer() {
             </nav>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg flex items-center justify-center">
-                <Image src="/logo1.png" alt="SAVRA" width={32} height={32} className="w-6 h-6 md:w-8 md:h-8" />
+                <Image src="/logo1.png" alt="SAVRA" width={32} height={32} sizes="32px" className="w-6 h-6 md:w-8 md:h-8" />
               </div>
-              <Image src="/logo2.png" alt="SAVRA" width={80} height={80} className="w-16 h-16 md:w-20 md:h-20 lg:w-[80px] lg:h-[80px]" />
+              <Image src="/logo2.png" alt="SAVRA" width={80} height={80} sizes="80px" className="w-16 h-16 md:w-20 md:h-20 lg:w-[80px] lg:h-[80px]" />
             </div>
           </div>
 
@@ -80,7 +80,7 @@ export default function Footer() {
                 aria-label="Twitter/X"
                 className="w-10 h-10 flex items-center justify-center border-2 border-gray-900 rounded-lg hover:bg-gray-900 hover:text-white transition-colors"
               >
-                <Image src="/X.svg" alt="X" width={20} height={20} />
+                <Image src="/X.svg" alt="X" width={20} height={20} sizes="20px" />
               </a>
             </div>
           </div>

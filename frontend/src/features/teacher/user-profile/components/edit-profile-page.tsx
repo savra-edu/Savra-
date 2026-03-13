@@ -104,6 +104,7 @@ export default function EditProfilePage() {
             height={128}
             alt="Profile"
             className="w-full h-full object-cover"
+            sizes="128px"
           />
         </div>
         <Button

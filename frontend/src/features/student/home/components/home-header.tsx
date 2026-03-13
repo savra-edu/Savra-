@@ -45,6 +45,7 @@ export default function HomeHeader({ studentClass, subjects, selectedSubject, on
                                 height={48}
                                 alt="Profile"
                                 className="w-full h-full object-cover"
+                                sizes="48px"
                             />
                         ) : (
                             <User className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />

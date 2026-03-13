@@ -218,6 +218,7 @@ function StudentProfileContent() {
                 height={128}
                 alt="Profile"
                 className="w-full h-full object-cover"
+                sizes="128px"
               />
             </div>
           </div>
@@ -402,6 +403,7 @@ function StudentProfileContent() {
                     height={128}
                     alt="Profile"
                     className="w-full h-full object-cover"
+                    sizes="128px"
                   />
                 </div>
               </div>

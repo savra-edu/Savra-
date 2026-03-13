@@ -73,6 +73,7 @@ export default function Onboarding() {
               src="/images/savra-logo-45456f.png"
               alt="Savra Logo"
               fill
+              sizes="246px"
               className="object-contain"
               priority
             />
@@ -88,7 +89,9 @@ export default function Onboarding() {
                 alt="Student"
                 width={258}
                 height={300}
+                sizes="258px"
                 className="object-contain"
+                priority
                 style={{ 
                   width: '258px', 
                   height: '220px', 
@@ -121,7 +124,9 @@ export default function Onboarding() {
                 alt="Educator"
                 width={220}
                 height={281}
+                sizes="220px"
                 className="object-contain"
+                priority
                 style={{ 
                   width: '220px', 
                   height: '220px', 
@@ -159,6 +164,7 @@ export default function Onboarding() {
                 src="/images/language-flag-1.png"
                 alt="Language"
                 fill
+                sizes="17px"
                 className="object-contain"
               />
             </div>
@@ -177,6 +183,7 @@ export default function Onboarding() {
             src="/images/savra-logo-45456f.png"
             alt="Savra Logo"
             fill
+            sizes="200px"
             className="object-contain"
             priority
           />
@@ -195,7 +202,9 @@ export default function Onboarding() {
               alt="Student"
               width={258}
               height={300}
+              sizes="258px"
               className="object-contain"
+              priority
               style={{ 
                 width: '258px', 
                 height: '220px', 
@@ -229,7 +238,9 @@ export default function Onboarding() {
               alt="Educator"
               width={220}
               height={281}
+              sizes="220px"
               className="object-contain"
+              priority
               style={{ 
                 width: '220px', 
                 height: '220px', 
@@ -262,6 +273,7 @@ export default function Onboarding() {
               src="/images/language-flag-1.png"
               alt="Language"
               fill
+              sizes="17px"
               className="object-contain"
             />
           </div>

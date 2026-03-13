@@ -365,7 +365,7 @@ function ModifyLessonPlanContent({ lessonId: propLessonId, showModifyPromptButto
                 className="w-full px-6 py-4 flex items-center gap-4 bg-[#F5F5F5] transition"
               >
                 <div>
-                  <Image src="/images/intro.png" alt={section.title} width={30} height={50} />
+                  <Image src="/images/intro.png" alt={section.title} width={30} height={50} sizes="30px" />
                 </div>
                 <span className="flex-1 text-left font-semibold text-base text-gray-900">
                   {section.title} ({section.duration})

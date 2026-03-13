@@ -281,7 +281,7 @@ export default function AdminAskSavraPage() {
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-[#F5EFEB66]">
             <div className="flex items-center justify-center">
-              <Image src="/images/savra-logo.png" alt="SAVRA" width={163} height={140} className="w-[163px] h-[140px]" />
+              <Image src="/images/savra-logo.png" alt="SAVRA" width={163} height={140} sizes="163px" className="w-[163px] h-[140px]" />
             </div>
           </div>
 
@@ -329,7 +329,7 @@ export default function AdminAskSavraPage() {
                 <X className="w-5 h-5" />
               </Link>
               <div className="w-24 h-6 relative">
-                <Image src="/images/savra-logo-45456f.png" alt="SAVRA" fill className="object-contain" />
+                <Image src="/images/savra-logo-45456f.png" alt="SAVRA" fill sizes="96px" className="object-contain" />
               </div>
             </div>
             <div className="hidden lg:flex items-center gap-4">
@@ -351,7 +351,7 @@ export default function AdminAskSavraPage() {
                 <div className="text-6xl mb-8">✨</div>
                 <div className="mb-8 flex flex-col items-center">
                   <div className="w-40 h-14 relative mb-3">
-                    <Image src="/images/savra-logo-45456f.png" alt="Savra AI" fill className="object-contain" priority />
+                    <Image src="/images/savra-logo-45456f.png" alt="Savra AI" fill sizes="160px" className="object-contain" priority />
                   </div>
                   <p className="text-sm text-gray-500 font-medium">Your Admin Assistant</p>
                 </div>

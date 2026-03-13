@@ -91,7 +91,7 @@ export default function QuizDashboard() {
           {/* Stat Card 1 */}
           <div className="bg-[#FCF8FE] rounded-2xl p-4 lg:p-8 text-center border border-[#F0EAFA]">
             <div className="hidden lg:flex justify-center mb-4">
-                <Image src="/images/quiz.png" alt="Quiz" width={200} height={200} />
+                <Image src="/images/quiz.png" alt="Quiz" width={200} height={200} sizes="200px" />
             </div>
             {isLoading ? (
               <div className="h-8 w-12 bg-gray-200 animate-pulse rounded mx-auto"></div>
@@ -104,7 +104,7 @@ export default function QuizDashboard() {
           {/* Stat Card 2 */}
           <div className="bg-[#FCF8FE] rounded-2xl p-4 lg:p-8 text-center border border-[#F0EAFA]">
             <div className="hidden lg:flex justify-center mb-4">
-              <Image src="/images/assessed.png" alt="Assessed" width={200} height={200} />
+              <Image src="/images/assessed.png" alt="Assessed" width={200} height={200} sizes="200px" />
             </div>
             {isLoading ? (
               <div className="h-8 w-12 bg-gray-200 animate-pulse rounded mx-auto"></div>
@@ -117,7 +117,7 @@ export default function QuizDashboard() {
           {/* Stat Card 3 */}
           <div className="bg-[#FCF8FE] rounded-2xl p-4 lg:p-8 text-center border border-[#F0EAFA]">
             <div className="hidden lg:flex justify-center mb-4">
-                <Image src="/images/complete.png" alt="Completion" width={200} height={200} />
+                <Image src="/images/complete.png" alt="Completion" width={200} height={200} sizes="200px" />
             </div>
             {isLoading ? (
               <div className="h-8 w-12 bg-gray-200 animate-pulse rounded mx-auto"></div>
@@ -130,7 +130,7 @@ export default function QuizDashboard() {
           {/* Stat Card 4 */}
           <div className="bg-[#FCF8FE] rounded-2xl p-4 lg:p-8 text-center border border-[#F0EAFA]">
             <div className="hidden lg:flex justify-center mb-4">
-                <Image src="/images/score.png" alt="Score" width={200} height={200} />
+                <Image src="/images/score.png" alt="Score" width={200} height={200} sizes="200px" />
             </div>
             {isLoading ? (
               <div className="h-8 w-12 bg-gray-200 animate-pulse rounded mx-auto"></div>

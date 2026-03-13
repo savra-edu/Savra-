@@ -49,6 +49,7 @@ export function QuickActions() {
                 alt={action.title}
                 width={180}
                 height={200}
+                sizes="(max-width: 768px) 50vw, 180px"
                 className="object-contain h-34"
               />
             </div>

@@ -38,6 +38,7 @@ export function AssessmentCTA({ className }: AssessmentCTAProps) {
                 alt={action.title}
                 width={240}
                 height={200}
+                sizes="(max-width: 768px) 100vw, 240px"
                 className="object-cover h-32 lg:h-42"
               />
             </div>

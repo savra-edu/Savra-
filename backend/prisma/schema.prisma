@@ -261,6 +261,7 @@ model Lesson {
   chapters LessonChapter[]
   periods  LessonPeriod[]
 
+  @@index([teacherId, status, createdAt])
   @@map("lessons")
 }
 
@@ -323,6 +324,7 @@ model Quiz {
   questions Question[]
   attempts  QuizAttempt[]
 
+  @@index([teacherId, status, createdAt])
   @@map("quizzes")
 }
 
@@ -434,6 +436,7 @@ model Assessment {
   chapters      AssessmentChapter[]
   questionTypes AssessmentQuestionType[]
 
+  @@index([teacherId, status, createdAt])
   @@map("assessments")
 }
 
@@ -477,6 +480,7 @@ model Announcement {
   class   Class              @relation(fields: [classId], references: [id])
   reads   AnnouncementRead[]
 
+  @@index([teacherId, createdAt])
   @@map("announcements")
 }
 

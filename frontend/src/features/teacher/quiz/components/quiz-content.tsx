@@ -33,6 +33,8 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
     // Chapters - load based on subject + grade (grade-specific CBSE/NCERT chapters)
     const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
     const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
+    const chapterIds = useMemo(() => chaptersData?.map((chapter: Chapter) => chapter.id) ?? [], [chaptersData])
+    const areAllChaptersSelected = chapterIds.length > 0 && chapterIds.every((chapterId) => selectedChapterIds.includes(chapterId))
 
     const [totalQuestions, setTotalQuestions] = useState<string>("")
     const [difficultyLevel, setDifficultyLevel] = useState<string>("")
@@ -60,6 +62,10 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
         setSelectedChapterIds((prev) =>
             prev.includes(chapterId) ? prev.filter((c) => c !== chapterId) : [...prev, chapterId]
         )
+    }
+
+    const toggleAllChapters = () => {
+        setSelectedChapterIds(areAllChaptersSelected ? [] : chapterIds)
     }
 
     const handleFileUpload = (file: File) => {
@@ -137,7 +143,22 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
             <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
                 {/* Chapters Section */}
                 <div className="mb-6 lg:mb-8">
-                    <h2 className="text-base font-bold text-[#000000] mb-4">Select Chapters</h2>
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                        <h2 className="text-base font-bold text-[#000000]">Select Chapters</h2>
+                        {selectedSubjectId && !chaptersLoading && chapterIds.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={toggleAllChapters}
+                                className={`shrink-0 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                                    areAllChaptersSelected
+                                        ? "bg-[#E8E2F0] border-[#9B61FF] text-[#242220]"
+                                        : "bg-white border-[#D9C6FF] text-[#9B61FF] hover:bg-[#F6F1FF]"
+                                }`}
+                            >
+                                {areAllChaptersSelected ? "Clear All" : "Select All"}
+                            </button>
+                        )}
+                    </div>
                     {!selectedSubjectId ? (
                         <p className="text-gray-500 text-sm">Please select a subject from the header</p>
                     ) : chaptersLoading ? (
@@ -146,6 +167,7 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
                         <div className="flex flex-wrap gap-2">
                             {chaptersData.map((chapter: Chapter) => (
                                 <button
+                                    type="button"
                                     key={chapter.id}
                                     onClick={() => toggleChapter(chapter.id)}
                                     className={`px-4 py-2 rounded-full border-2 transition-colors font-medium text-sm ${

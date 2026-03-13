@@ -34,6 +34,7 @@ export function GoogleLoginButton({
           alt="Google"
           width={24}
           height={24}
+          sizes="24px"
           className="w-6 h-6 object-contain"
         />
       </button>

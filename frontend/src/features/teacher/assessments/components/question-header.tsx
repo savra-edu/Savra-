@@ -5,8 +5,10 @@ import SearchBar from "@/components/search-bar"
 import { SubjectSelect, ClassSelect } from "@/components/select-component"
 import Link from "next/link"
 import { ChevronLeft, Pencil } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 import { useTeacherSubjects } from "@/hooks/use-subjects"
 import { useTeacherClasses } from "@/hooks/use-classes"
+import { getHistoryAwareBackHref } from "@/lib/history-navigation"
 
 interface QuestionPaperHeaderProps {
     className?: string
@@ -15,8 +17,10 @@ interface QuestionPaperHeaderProps {
 }
 
 export function QuestionPaperHeader({ className, onEditClick, isEditMode = false }: QuestionPaperHeaderProps) {
+    const searchParams = useSearchParams()
     const { data: subjects } = useTeacherSubjects()
     const { data: classes } = useTeacherClasses()
+    const backHref = getHistoryAwareBackHref(searchParams.get("from"), "/assessments/create")
 
     const [subject, setSubject] = useState<string>("")
     const [classValue, setClassValue] = useState<string>("")
@@ -39,7 +43,7 @@ export function QuestionPaperHeader({ className, onEditClick, isEditMode = false
             {/* Mobile Header */}
             <div className="lg:hidden flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
-                    <Link href="/assessments/create">
+                    <Link href={backHref}>
                         <ChevronLeft className="w-6 h-6 text-black cursor-pointer" />
                     </Link>
                     <h1 className="text-xl font-bold text-[#242220]">Question Paper</h1>
@@ -61,7 +65,7 @@ export function QuestionPaperHeader({ className, onEditClick, isEditMode = false
 
             {/* Desktop Header */}
             <div className="hidden lg:flex items-center gap-4">
-                <Link href="/assessments/create">
+                <Link href={backHref}>
                     <ChevronLeft className="w-12 h-12 text-black rounded-full p-4 bg-[#F5F5F5] cursor-pointer hover:bg-[#E5E5E5] transition-colors" />
                 </Link>
                 <h1 className="text-3xl font-bold text-[#242220]">Question Paper</h1>

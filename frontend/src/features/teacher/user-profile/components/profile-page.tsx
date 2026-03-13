@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import Link from "next/link"
-import { X, Search, ChevronDown, ChevronLeft, MoreVertical, Pencil, Trash2, LogOut, Loader2, AlertTriangle, Check } from "lucide-react"
+import { X, Search, ChevronDown, ChevronLeft, MoreVertical, Trash2, LogOut, Loader2, AlertTriangle, Check } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
-import { useFetch, useMutation } from "@/hooks/use-api"
+import { queryKeys, useApiQuery } from "@/hooks/use-query"
 import { useSubjects } from "@/hooks/use-subjects"
 import { useSchoolClasses } from "@/hooks/use-classes"
 import { useAuth } from "@/contexts/auth-context"
@@ -61,13 +61,12 @@ function UserProfileContent() {
   const { refetchTeacherData } = useData()
 
   // Fetch profile from API
-  const { data: profile, isLoading: profileLoading, refetch } = useFetch<TeacherProfile>("/teacher/profile")
+  const { data: profile, isLoading: profileLoading, refetch } = useApiQuery<TeacherProfile>({
+    queryKey: queryKeys.teacherProfile(),
+    endpoint: "/teacher/profile",
+  })
   const { data: availableSubjects } = useSubjects()
   const { data: schoolClasses } = useSchoolClasses()
-  const { mutate: updateProfile, isLoading: isSaving } = useMutation<Partial<TeacherProfile>, TeacherProfile>(
-    "put",
-    "/teacher/profile"
-  )
 
   // Local state for form
   const [name, setName] = useState("")
@@ -77,6 +76,7 @@ function UserProfileContent() {
   const [location, setLocation] = useState("")
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
   const [showClassDropdown, setShowClassDropdown] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -141,6 +141,7 @@ function UserProfileContent() {
   const handleSave = async () => {
     setSaveSuccess(false)
     setSaveError(null)
+    setIsSaving(true)
     const validClassIds = selectedClassIds.filter((id) =>
       classesGrades6Plus.some((c) => c.id === id)
     )
@@ -158,6 +159,8 @@ function UserProfileContent() {
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save profile")
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -392,6 +395,7 @@ function UserProfileContent() {
                 height={96}
                 alt="Profile"
                 className="w-full h-full object-cover"
+                sizes="96px"
               />
             </div>
             <input
@@ -753,6 +757,7 @@ function UserProfileContent() {
                   height={128}
                   alt="Profile"
                   className="w-full h-full object-cover"
+                  sizes="128px"
                 />
               </div>
             </div>
@@ -769,7 +774,7 @@ function UserProfileContent() {
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="w-[200px] mb-6 border-2 border-[#AB79DA] text-[#AB79DA] font-bold rounded-lg py-4 font-medium bg-transparent disabled:opacity-50"
+              className="w-[200px] mb-6 border-2 border-[#AB79DA] text-[#AB79DA] font-bold rounded-lg py-4 bg-transparent disabled:opacity-50"
             >
               {isUploading ? (
                 <>

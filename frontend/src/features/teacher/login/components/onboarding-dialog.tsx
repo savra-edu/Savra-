@@ -86,6 +86,7 @@ export function OnboardingDialog({ steps, onComplete, onClose, initialStep = 0 }
                 alt="SAVRA Logo"
                 width={120}
                 height={40}
+                sizes="120px"
                 className="object-contain"
                 priority
               />
@@ -153,6 +154,7 @@ export function OnboardingDialog({ steps, onComplete, onClose, initialStep = 0 }
                   alt="SAVRA Logo"
                   width={180}
                   height={60}
+                  sizes="180px"
                   className="object-contain"
                   priority
                 />

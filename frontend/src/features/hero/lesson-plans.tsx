@@ -9,6 +9,7 @@ export default function LessonPlans() {
                     alt="Notifications" 
                     width={650} 
                     height={500} 
+                    sizes="(max-width: 768px) 128px, 650px"
                     className="absolute -top-8 md:-top-15 -left-2 z-20 w-32 md:w-auto"
                 />
                 <div className="text-3xl md:text-4xl lg:text-5xl mt-20 md:mt-32 font-semibold text-white">
@@ -31,6 +32,7 @@ export default function LessonPlans() {
                 alt="Lesson Plans App" 
                 width={600} 
                 height={600} 
+                sizes="(max-width: 768px) 300px, (max-width: 1024px) 400px, 600px"
                 className="relative z-10 object-cover w-full max-w-[300px] md:max-w-[400px] lg:max-w-[600px]"
                 priority
               />

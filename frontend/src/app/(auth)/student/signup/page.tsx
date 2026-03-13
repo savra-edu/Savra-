@@ -123,6 +123,7 @@ export default function StudentSignupPage() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />
@@ -265,6 +266,7 @@ export default function StudentSignupPage() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />

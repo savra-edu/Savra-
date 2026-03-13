@@ -62,6 +62,8 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
     const selectedGrade = selectedClassObj?.grade ?? null
     const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
     const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
+    const chapterIds = useMemo(() => chaptersData?.map((chapter: Chapter) => chapter.id) ?? [], [chaptersData])
+    const areAllChaptersSelected = chapterIds.length > 0 && chapterIds.every((chapterId) => selectedChapterIds.includes(chapterId))
 
     const [duration, setDuration] = useState<string>("")
     const [objective, setObjective] = useState<string>("")
@@ -119,6 +121,10 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
         setSelectedChapterIds((prev) =>
             prev.includes(chapterId) ? prev.filter((c) => c !== chapterId) : [...prev, chapterId]
         )
+    }
+
+    const toggleAllChapters = () => {
+        setSelectedChapterIds(areAllChaptersSelected ? [] : chapterIds)
     }
 
     const handleFileUpload = (file: File) => {
@@ -241,7 +247,22 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
                 <div className="mb-6 lg:mb-12">
                     <div className="flex flex-row flex-wrap items-start justify-between gap-4 lg:gap-6">
                         <div className="flex flex-col gap-4">
-                            <h2 className="text-base font-bold text-[#000000]">Select Chapters</h2>
+                            <div className="flex items-center justify-between gap-4">
+                                <h2 className="text-base font-bold text-[#000000]">Select Chapters</h2>
+                                {selectedSubjectId && !chaptersLoading && chapterIds.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={toggleAllChapters}
+                                        className={`shrink-0 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                                            areAllChaptersSelected
+                                                ? "bg-[#E8E2F0] border-[#9B61FF] text-[#242220]"
+                                                : "bg-white border-[#D9C6FF] text-[#9B61FF] hover:bg-[#F6F1FF]"
+                                        }`}
+                                    >
+                                        {areAllChaptersSelected ? "Clear All" : "Select All"}
+                                    </button>
+                                )}
+                            </div>
                             {!selectedSubjectId ? (
                                 <p className="text-gray-500 text-sm">Loading subjects...</p>
                             ) : chaptersLoading ? (
@@ -250,6 +271,7 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
                                 <div className="flex flex-wrap gap-2">
                                     {chaptersData.map((chapter: Chapter) => (
                                         <button
+                                            type="button"
                                             key={chapter.id}
                                             onClick={() => toggleChapter(chapter.id)}
                                             className={`px-4 py-2 rounded-full border-2 transition-colors font-medium text-sm ${

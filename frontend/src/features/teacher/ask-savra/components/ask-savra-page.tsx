@@ -339,6 +339,7 @@ export default function AskSavraPage() {
                 alt="SAVRA"
                 width={163}
                 height={140}
+                sizes="163px"
                 className="w-[163px] h-[140px]"
               />
             </div>
@@ -400,6 +401,7 @@ export default function AskSavraPage() {
                   src="/images/savra-logo-45456f.png"
                   alt="SAVRA"
                   fill
+                  sizes="96px"
                   className="object-contain"
                 />
               </div>
@@ -432,6 +434,7 @@ export default function AskSavraPage() {
                       src="/images/savra-logo-45456f.png"
                       alt="Savra AI"
                       fill
+                      sizes="160px"
                       className="object-contain"
                       priority
                     />

@@ -2,9 +2,9 @@
 
 import { Suspense, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Edit, Share2, Download, Printer, Check, FileText } from "lucide-react"
+import { Edit, Share2, Printer, Check, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useFetch } from "@/hooks/use-api"
+import { queryKeys, useApiQuery } from "@/hooks/use-query"
 import { useAuth } from "@/contexts/auth-context"
 import { downloadAssessmentPDF, downloadAssessmentAnswerKeyPDF } from "@/lib/pdf-generator"
 import { downloadAssessmentDoc, downloadAssessmentAnswerKeyDoc } from "@/lib/doc-generator"
@@ -55,6 +55,10 @@ interface QuestionPaperContentProps {
   isEditMode?: boolean
 }
 
+function getQuestionKey(question: Question, idx: number, scope: string) {
+  return `${scope}-${question.number ?? idx}-${question.text}`
+}
+
 function QuestionPaperContentInner({ onEditClick, isEditMode = false }: QuestionPaperContentProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -65,9 +69,11 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
   const [linkCopied, setLinkCopied] = useState(false)
 
   // Fetch assessment data from API
-  const { data: assessment, isLoading, refetch } = useFetch<Assessment>(
-    assessmentId ? `/assessments/${assessmentId}` : null
-  )
+  const { data: assessment, isLoading, refetch } = useApiQuery<Assessment>({
+    queryKey: queryKeys.assessment(assessmentId ?? "missing"),
+    endpoint: `/assessments/${assessmentId}`,
+    enabled: !!assessmentId,
+  })
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -228,12 +234,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
     <div className="flex flex-col h-full">
       {/* Mobile: Title below header */}
       <div className="lg:hidden mb-4">
-        <h2 className="text-base font-medium text-[#242220]">7's Generated Question Paper</h2>
+        <h2 className="text-base font-medium text-[#242220]">7&apos;s Generated Question Paper</h2>
       </div>
 
       <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden min-h-0">
         {/* Desktop Header */}
-        <div className="hidden lg:flex bg-[#E9E9E9] p-6 rounded-t-2xl items-center justify-between flex-shrink-0">
+        <div className="hidden lg:flex bg-[#E9E9E9] p-6 rounded-t-2xl items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">SAVRA - Question Paper</h1>
           </div>
@@ -299,8 +305,8 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                       )}
                       <div className="space-y-6">
                         {section.questions.map((question, idx) => (
-                          <div key={question.number || idx} className="space-y-2">
-                            <p className="font-semibold break-words">
+                          <div key={getQuestionKey(question, idx, `section-${sectionIdx}`)} className="space-y-2">
+                            <p className="font-semibold wrap-break-word">
                               Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
                               {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
                             </p>
@@ -321,8 +327,8 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                 ) : (
                   <div className="space-y-6">
                     {questions.map((question, idx) => (
-                      <div key={question.number || idx} className="space-y-2">
-                        <p className="font-semibold break-words">
+                      <div key={getQuestionKey(question, idx, "flat")} className="space-y-2">
+                        <p className="font-semibold wrap-break-word">
                           Question {question.number || idx + 1}: {normalizeScientificText(question.text)}
                           {question.marks && <span className="text-gray-500 font-normal ml-2">({question.marks} marks)</span>}
                         </p>
@@ -343,7 +349,7 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
             </div>
 
             {/* Footer Actions */}
-        <div className="flex-shrink-0 border-t border-gray-200">
+        <div className="shrink-0 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4 px-4 py-4">
             {/* First Row: Print, Save draft, Share, Answer Key */}

@@ -56,6 +56,7 @@ export function StudentLogin() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />
@@ -156,6 +157,7 @@ export function StudentLogin() {
               alt="SAVRA Logo"
               width={120}
               height={40}
+              sizes="120px"
               className="object-contain"
               priority
             />

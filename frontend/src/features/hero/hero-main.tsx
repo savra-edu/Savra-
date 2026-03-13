@@ -19,6 +19,7 @@ export default function HeroMain() {
       alt="Student analytics"
       width={100}
       height={100}
+      sizes="100px"
       className="hidden md:block absolute left-4 md:left-12 top-24 -translate-y-1/2 opacity-80 blur-xs transform rotate-360 drop-shadow-lg z-0"
     />
 
@@ -27,6 +28,7 @@ export default function HeroMain() {
       alt="Student analytics"
       width={120}
       height={120}
+      sizes="120px"
       className="hidden md:block absolute -left-4 top-80 -translate-y-1/2  transform rotate-360 drop-shadow-lg z-0"
     />
     
@@ -36,6 +38,7 @@ export default function HeroMain() {
       alt="Gamified quizzes"
       width={180}
       height={180}
+      sizes="180px"
       className="hidden lg:block absolute -left-1 bottom-14 transform drop-shadow-lg z-0"
     />
     
@@ -45,6 +48,7 @@ export default function HeroMain() {
       alt="NEP based lesson plans"
       width={100}
       height={100}
+      sizes="100px"
       className="hidden md:block absolute right-4 md:right-12 top-16 -translate-y-1/2 opacity-80 blur-sm transform -rotate-12 drop-shadow-lg z-0"
     />
     {/* Top-Right: Light purple, blurred */}
@@ -53,6 +57,7 @@ export default function HeroMain() {
       alt=""
       width={120}
       height={120}
+      sizes="120px"
       className="hidden md:block absolute right-0 top-48 transform z-0"
     />
     
@@ -63,6 +68,7 @@ export default function HeroMain() {
       alt="Question paper"
       width={180}
       height={180}
+      sizes="180px"
       className="hidden lg:block absolute right-0 bottom-10 transform drop-shadow-lg z-0"
     />
 

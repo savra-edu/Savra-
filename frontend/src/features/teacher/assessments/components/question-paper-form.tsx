@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Edit2, ChevronDown, X, Upload } from "lucide-react"
+import { Plus, Edit2, X, Upload } from "lucide-react"
 import AddTypeDialog from "./add-type-dialog"
 import { GeneratingOverlay } from "@/components/generating-overlay"
 import { api } from "@/lib/api"
@@ -57,8 +57,8 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
   // Chapters - load based on subject + grade (grade-specific CBSE/NCERT chapters)
   const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
   const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
-  const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false)
-  const chapterDropdownRef = useRef<HTMLDivElement>(null)
+  const chapterIds = useMemo(() => chaptersData?.map((chapter: Chapter) => chapter.id) ?? [], [chaptersData])
+  const areAllChaptersSelected = chapterIds.length > 0 && chapterIds.every((chapterId) => selectedChapterIds.includes(chapterId))
 
   const [totalMarks, setTotalMarks] = useState<string>("")
   const [difficultyLevel, setDifficultyLevel] = useState<string>("")
@@ -81,19 +81,6 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
     setSelectedChapterIds([])
   }, [selectedSubjectId, selectedGrade])
 
-  // Close chapter dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (chapterDropdownRef.current && !chapterDropdownRef.current.contains(e.target as Node)) {
-        setChapterDropdownOpen(false)
-      }
-    }
-    if (chapterDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [chapterDropdownOpen])
-
   // Form validation (Question Paper Objective is optional)
   const isFormValid = useMemo(() => {
     return selectedClassId !== "" &&
@@ -112,6 +99,10 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
     setSelectedChapterIds((prev) =>
       prev.includes(chapterId) ? prev.filter((c) => c !== chapterId) : [...prev, chapterId]
     )
+  }
+
+  const toggleAllChapters = () => {
+    setSelectedChapterIds(areAllChaptersSelected ? [] : chapterIds)
   }
 
   const selectedChapterNames = chaptersData
@@ -230,77 +221,77 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
       {isLoading && <GeneratingOverlay type="assessment" onCancel={() => setIsLoading(false)} />}
       {/* Scrollable Content Area */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
-        {/* Row: Chapters + Total Marks + Level */}
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 mb-6 lg:mb-8">
-          {/* Chapter dropdown */}
-          <div className="flex flex-col gap-2 flex-1 min-w-0">
-            <label className="text-base font-bold text-[#000000]">Select the chapter(s)</label>
-            <div ref={chapterDropdownRef} className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedSubjectId && !chaptersLoading) setChapterDropdownOpen(prev => !prev)
-                }}
-                className="w-full flex items-center justify-between px-4 py-3 border border-[#A56AFF] rounded-lg bg-white text-left text-sm"
-              >
-                <span className={`truncate ${selectedChapterNames.length > 0 ? "text-[#242220]" : "text-gray-400"}`}>
-                  {!selectedSubjectId
-                    ? "Select a subject first"
-                    : chaptersLoading
-                    ? "Loading..."
-                    : selectedChapterNames.length > 0
-                    ? selectedChapterNames.join(", ")
-                    : "Select"}
-                </span>
-                <ChevronDown className="w-5 h-5 text-gray-500 shrink-0 ml-2" />
-              </button>
-              {chapterDropdownOpen && chaptersData && chaptersData.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
-                  {chaptersData.map((chapter: Chapter) => (
-                    <button
-                      key={chapter.id}
-                      type="button"
-                      onClick={() => toggleChapter(chapter.id)}
-                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
-                        selectedChapterIds.includes(chapter.id)
-                          ? "bg-[#EFE9F8] text-[#9B61FF] font-medium"
-                          : "text-[#242220]"
-                      }`}
-                    >
-                      {chapter.name}
-                    </button>
-                  ))}
-                </div>
+        {/* Chapters + Question Paper Options */}
+        <div className="mb-6 lg:mb-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <label className="text-base font-bold text-[#000000]">Select the chapter(s)</label>
+              {selectedSubjectId && !chaptersLoading && chapterIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleAllChapters}
+                  className={`shrink-0 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                    areAllChaptersSelected
+                      ? "bg-[#E8E2F0] border-[#9B61FF] text-[#242220]"
+                      : "bg-white border-[#D9C6FF] text-[#9B61FF] hover:bg-[#F6F1FF]"
+                  }`}
+                >
+                  {areAllChaptersSelected ? "Clear All" : "Select All"}
+                </button>
               )}
             </div>
+            {!selectedSubjectId ? (
+              <p className="text-gray-500 text-sm">Please select a subject from the header</p>
+            ) : chaptersLoading ? (
+              <div className="w-6 h-6 border-2 border-[#DF6647] border-t-transparent rounded-full animate-spin"></div>
+            ) : chaptersData && chaptersData.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {chaptersData.map((chapter: Chapter) => (
+                  <button
+                    key={chapter.id}
+                    type="button"
+                    onClick={() => toggleChapter(chapter.id)}
+                    className={`px-4 py-2 rounded-full border-2 transition-colors font-medium text-sm ${
+                      selectedChapterIds.includes(chapter.id)
+                        ? "bg-[#E8E2F0] border-[#9B61FF] text-[#242220]"
+                        : "border-gray-300 text-[#353535] hover:border-gray-400"
+                    }`}
+                  >
+                    {chapter.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No chapters found for this subject</p>
+            )}
           </div>
 
-          {/* Total Marks */}
-          <div className="flex flex-col gap-2">
-            <label className="text-base font-bold text-[#000000]">Total Marks</label>
-            <Input
-              value={totalMarks}
-              onChange={(e) => setTotalMarks(clampNonNegative(e.target.value))}
-              placeholder="Type here"
-              type="number"
-              min={0}
-              className="w-full lg:w-[140px] px-4 py-3 border border-[#A56AFF] rounded-lg [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
-            />
-          </div>
+          <div className="flex flex-row flex-wrap gap-4 lg:gap-6 mt-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-base font-bold text-[#000000]">Total Marks</label>
+              <Input
+                value={totalMarks}
+                onChange={(e) => setTotalMarks(clampNonNegative(e.target.value))}
+                placeholder="Type here"
+                type="number"
+                min={0}
+                className="w-full lg:w-[140px] px-4 py-3 border border-[#A56AFF] rounded-lg [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100"
+              />
+            </div>
 
-          {/* Level */}
-          <div className="flex flex-col gap-2">
-            <label className="text-base font-bold text-[#000000]">Level</label>
-            <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
-              <SelectTrigger className="w-full lg:w-[140px] border-[#A56AFF]">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent side="bottom" align="start" position="popper" sideOffset={4}>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Intermediate</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <label className="text-base font-bold text-[#000000]">Level</label>
+              <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
+                <SelectTrigger className="w-full lg:w-[140px] border-[#A56AFF]">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent side="bottom" align="start" position="popper" sideOffset={4}>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Intermediate</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

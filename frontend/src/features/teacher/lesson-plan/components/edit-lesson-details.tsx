@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, ChevronUp, Share2, Printer, Check } from "lucide-react"
 import { api } from "@/lib/api"
-import { useFetch } from "@/hooks/use-api"
+import { queryKeys, useApiQuery } from "@/hooks/use-query"
 import { useAuth } from "@/contexts/auth-context"
 import { Lesson, LessonPeriod } from "@/types/api"
 import { generateLessonPlanPDF } from "@/lib/pdf-generator"
@@ -16,7 +16,7 @@ import { PeriodTable } from "./period-table"
 interface EditLessonDetailsProps {
   isEditMode?: boolean
   lesson?: Lesson | null
-  onSave?: () => void
+  onSave?: () => Promise<unknown> | unknown
 }
 
 export default function EditLessonDetails({ isEditMode = false, lesson: propLesson, onSave }: EditLessonDetailsProps) {
@@ -26,9 +26,11 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
   const { user } = useAuth()
   
   // Fetch lesson data if lessonId is provided
-  const { data: fetchedLesson, isLoading: isLoadingLesson, refetch: refetchLesson } = useFetch<Lesson>(
-    lessonId ? `/lessons/${lessonId}` : null
-  )
+  const { data: fetchedLesson, isLoading: isLoadingLesson, refetch: refetchLesson } = useApiQuery<Lesson>({
+    queryKey: queryKeys.lesson(lessonId ?? "missing"),
+    endpoint: `/lessons/${lessonId}`,
+    enabled: !propLesson && !!lessonId,
+  })
   
   const lesson = propLesson || fetchedLesson
   
@@ -68,20 +70,26 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
     if (apiPeriods.length >= numberOfPeriods && apiPeriods.some((p) => p.concept || p.learningOutcomes)) {
       return // API already provided periods with content — don't overwrite
     }
-    if (numberOfPeriods > 0 && periods.length < numberOfPeriods) {
-      const newPeriods: LessonPeriod[] = [...periods]
-      for (let i = periods.length + 1; i <= numberOfPeriods; i++) {
-        newPeriods.push({
-          id: `temp-${i}`,
-          lessonId: lessonId || "",
-          periodNo: i,
-        })
+    setPeriods((currentPeriods) => {
+      if (numberOfPeriods > 0 && currentPeriods.length < numberOfPeriods) {
+        const newPeriods: LessonPeriod[] = [...currentPeriods]
+        for (let i = currentPeriods.length + 1; i <= numberOfPeriods; i++) {
+          newPeriods.push({
+            id: `temp-${i}`,
+            lessonId: lessonId || "",
+            periodNo: i,
+          })
+        }
+        return newPeriods
       }
-      setPeriods(newPeriods)
-    } else if (numberOfPeriods < periods.length) {
-      setPeriods(periods.slice(0, numberOfPeriods))
-    }
-  }, [numberOfPeriods, lesson?.periods])
+
+      if (numberOfPeriods < currentPeriods.length) {
+        return currentPeriods.slice(0, numberOfPeriods)
+      }
+
+      return currentPeriods
+    })
+  }, [lesson?.periods, lessonId, numberOfPeriods])
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({
@@ -157,17 +165,16 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
         await api.patch(`/lessons/${lessonId}/status`, { status: "saved" })
       }
 
-      // Refetch lesson data to sync with server and update local state
-      // This ensures periods are properly loaded after save
-      if (refetchLesson) {
-        try {
+      // Sync lesson data after save so cached detail state stays current.
+      try {
+        if (onSave) {
+          await onSave()
+        } else {
           await refetchLesson()
-        } catch (err) {
-          console.warn('Background refetch failed:', err)
         }
+      } catch (err) {
+        console.warn('Background refetch failed:', err)
       }
-      
-      onSave?.()
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save lesson plan")
     } finally {
@@ -296,7 +303,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
     <div className="h-full flex flex-col">
       <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
         {/* Mobile: Plan Name and Duration (Default View) */}
-        <div className="flex-shrink-0 lg:hidden bg-[#E9E9E9] px-4 py-3 rounded-t-2xl flex items-center justify-between">
+        <div className="shrink-0 lg:hidden bg-[#E9E9E9] px-4 py-3 rounded-t-2xl flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#242220]">{lessonTitle}</h2>
           <div className="flex items-center gap-4">
             <span className="text-base font-medium text-[#242220]">{lessonDuration}</span>
@@ -304,6 +311,12 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
         </div>
 
         {/* Title editor and formatting toolbar removed per requirements */}
+
+        {saveError && (
+          <div className="px-4 lg:px-12 py-3 border-b border-red-100 bg-red-50 text-sm text-red-600">
+            {saveError}
+          </div>
+        )}
 
         {/* Content - Lesson plan tables only */}
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -357,7 +370,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
         </div>
 
         {/* Footer Actions */}
-        <div className="flex-shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
+        <div className="shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4">
             {/* First Row: Print, Share */}
