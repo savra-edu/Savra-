@@ -276,6 +276,14 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
   const chapter = assessment.chapters?.map((c) => c.name).join(", ") || ""
   const isMathSubject = ["mathematics", "maths"].includes(subject.trim().toLowerCase())
   const isCbseMathPaper = isMathSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isPhysicsSubject = subject.trim().toLowerCase() === "physics"
+  const isCbsePhysicsPaper = isPhysicsSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isStructuredCbsePaper = isCbseMathPaper || isCbsePhysicsPaper
+  const timeLabel = isCbsePhysicsPaper
+    ? ((assessment.totalMarks ?? 0) >= 70 ? "3 Hours" : (assessment.totalMarks ?? 0) >= 40 ? "2 Hours" : "1 Hour")
+    : isCbseMathPaper
+      ? ((assessment.totalMarks ?? 0) >= 80 ? "3 Hours" : (assessment.totalMarks ?? 0) >= 40 ? "2 Hours" : "1 Hour")
+      : "60 mins"
   const qp = assessment.questionPaper
   const instructions = qp?.instructions || [
     "All questions are compulsory.",
@@ -285,7 +293,7 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
   const flatQuestions = qp?.questions || (sections ? sections.flatMap((s) => s.questions || []) : [])
 
   let questionsHtml = ""
-  if (isCbseMathPaper && sections && sections.length > 0) {
+  if (isStructuredCbsePaper && sections && sections.length > 0) {
     questionsHtml = sections
       .map((sec, si) => {
         let arDirectionShown = false
@@ -396,7 +404,7 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
   const html = `
     <h2>SAVRA - Question Paper</h2>
     <p><strong>Subject:</strong> ${escapeHtml(subject)} | <strong>Class:</strong> ${grade} | <strong>Chapter:</strong> ${escapeHtml(chapter)}</p>
-    <p><strong>Maximum Marks:</strong> ${assessment.totalMarks ?? 100} | <strong>Time:</strong> 60 mins</p>
+    <p><strong>Maximum Marks:</strong> ${assessment.totalMarks ?? 100} | <strong>Time:</strong> ${timeLabel}</p>
     <h3>General Instructions</h3>
     <ol>${instructions.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ol>
     <hr/>

@@ -498,6 +498,14 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
   const totalMarks = assessment.totalMarks || 100
   const isMathSubject = ["mathematics", "maths"].includes(subject.trim().toLowerCase())
   const isCbseMathPaper = isMathSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isPhysicsSubject = subject.trim().toLowerCase() === "physics"
+  const isCbsePhysicsPaper = isPhysicsSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isStructuredCbsePaper = isCbseMathPaper || isCbsePhysicsPaper
+  const timeLabel = isCbsePhysicsPaper
+    ? (totalMarks >= 70 ? "3 Hours" : totalMarks >= 40 ? "2 Hours" : "1 Hour")
+    : isCbseMathPaper
+      ? (totalMarks >= 80 ? "3 Hours" : totalMarks >= 40 ? "2 Hours" : "1 Hour")
+      : "1 Hour"
 
   doc.setFontSize(11)
   doc.setFont("helvetica", "bold")
@@ -507,7 +515,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
   doc.setFont("helvetica", "normal")
   doc.text(`Class: ${grade}`, margin, yPos)
-  doc.text(`Time: 1 Hour`, pageWidth - margin, yPos, { align: "right" })
+  doc.text(`Time: ${timeLabel}`, pageWidth - margin, yPos, { align: "right" })
   yPos += 6
 
   if (chapter) {
@@ -579,7 +587,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
   // Questions
   doc.setFontSize(10)
 
-  if (isCbseMathPaper && sections.length > 0) {
+  if (isStructuredCbsePaper && sections.length > 0) {
     for (const section of sections) {
       ensurePageSpace(18)
 

@@ -233,6 +233,12 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
   const duration = 60 // Default duration since it's not in assessment schema
   const isMathSubject = ["mathematics", "maths"].includes(subject.trim().toLowerCase())
   const isCbseMathPaper = isMathSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isPhysicsSubject = subject.trim().toLowerCase() === "physics"
+  const isCbsePhysicsPaper = isPhysicsSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isStructuredCbsePaper = isCbseMathPaper || isCbsePhysicsPaper
+  const timeAllowedLabel = isCbsePhysicsPaper
+    ? (totalMarks >= 70 ? "3 Hours" : totalMarks >= 40 ? "2 Hours" : "1 Hour")
+    : totalMarks >= 80 ? "3 Hours" : totalMarks >= 40 ? "2 Hours" : "1 Hour"
   const instructions = questionPaper?.instructions || [
     "All questions are compulsory.",
     "The question paper is designed to test understanding and application of concepts.",
@@ -291,7 +297,7 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
           <>
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 lg:py-6 border border-gray-200 rounded-b-2xl min-h-0">
-              {isCbseMathPaper ? (
+              {isStructuredCbsePaper ? (
                 <>
                   {/* ── Paper Header ── */}
                   <div className="border-b-2 border-gray-800 pb-3 mb-4">
@@ -302,7 +308,7 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
                       </div>
                       <div className="text-right space-y-0.5">
                         <p className="text-sm"><span className="font-bold">Maximum Marks:</span> {totalMarks}</p>
-                        <p className="text-sm"><span className="font-bold">Time Allowed:</span> {totalMarks >= 80 ? "3 Hours" : totalMarks >= 40 ? "2 Hours" : "1 Hour"}</p>
+                        <p className="text-sm"><span className="font-bold">Time Allowed:</span> {timeAllowedLabel}</p>
                       </div>
                     </div>
                     {chapter && (

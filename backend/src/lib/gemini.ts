@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, Content, Part } from '@google/generative-ai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { buildCbseMathPromptSection } from './cbse-math-blueprint';
+import { buildCbsePhysicsPromptSection, getCbsePhysicsInstructionLines } from './cbse-physics-blueprint';
 
 const SUPPORTED_REFERENCE_MIME: Record<string, string> = {
   'application/pdf': 'application/pdf',
@@ -11,6 +12,46 @@ const SUPPORTED_REFERENCE_MIME: Record<string, string> = {
   'image/webp': 'image/webp',
 };
 const MAX_REFERENCE_SIZE = 20 * 1024 * 1024; // 20MB
+
+type CachedStaticFilePart = {
+  part: Part;
+  size: number;
+  mtimeMs: number;
+};
+
+// Process-local cache for static local reference files used during generation.
+// This avoids repeated disk reads + base64 conversion while preserving behavior.
+const staticFilePartCache = new Map<string, CachedStaticFilePart>();
+
+async function loadStaticLocalFilePart(
+  filePath: string,
+  mimeType: string,
+  maxFileSize: number,
+): Promise<Part | null> {
+  const stats = await fs.stat(filePath);
+  if (stats.size > maxFileSize) return null;
+
+  const cached = staticFilePartCache.get(filePath);
+  if (cached && cached.size === stats.size && cached.mtimeMs === stats.mtimeMs) {
+    return cached.part;
+  }
+
+  const fileData = await fs.readFile(filePath);
+  const part = {
+    inlineData: {
+      mimeType,
+      data: fileData.toString('base64'),
+    },
+  } as Part;
+
+  staticFilePartCache.set(filePath, {
+    part,
+    size: stats.size,
+    mtimeMs: stats.mtimeMs,
+  });
+
+  return part;
+}
 
 /** Fetches a file from URL and converts to Gemini Part. Returns null on failure (no throw). */
 async function fetchReferenceFileAsPart(fileUrl: string): Promise<Part | null> {
@@ -636,23 +677,16 @@ export const generateAssessment = async (
         try {
           const filePath = path.join(questionPaperDir, pdfFile);
           const stats = await fs.stat(filePath);
-          const fileSize = stats.size;
-
-          if (fileSize > MAX_FILE_SIZE) {
-            console.warn(`Warning: File ${pdfFile} is too large (${(fileSize / 1024 / 1024).toFixed(2)}MB), skipping.`);
+          if (stats.size > MAX_FILE_SIZE) {
+            console.warn(`Warning: File ${pdfFile} is too large (${(stats.size / 1024 / 1024).toFixed(2)}MB), skipping.`);
             continue;
           }
 
-          const fileData = await fs.readFile(filePath);
-          const base64 = fileData.toString('base64');
-          console.log(`Successfully loaded PDF ${pdfFile} (${(fileSize / 1024).toFixed(2)}KB)`);
-          
-          fileParts.push({
-            inlineData: {
-              mimeType: 'application/pdf',
-              data: base64,
-            },
-          } as Part);
+          const part = await loadStaticLocalFilePart(filePath, 'application/pdf', MAX_FILE_SIZE);
+          if (!part) continue;
+
+          console.log(`Successfully prepared PDF ${pdfFile} (${(stats.size / 1024).toFixed(2)}KB)`);
+          fileParts.push(part);
         } catch (error) {
           console.warn(`Warning: Could not read file ${pdfFile}:`, error);
         }
@@ -676,23 +710,16 @@ export const generateAssessment = async (
       try {
         const filePath = path.join(assignmentDir, pdfFile);
         const stats = await fs.stat(filePath);
-        const fileSize = stats.size;
-
-        if (fileSize > MAX_FILE_SIZE) {
-          console.warn(`[Gemini] generateAssessment - Assignment file ${pdfFile} too large (${(fileSize / 1024 / 1024).toFixed(2)}MB), skipping`);
+        if (stats.size > MAX_FILE_SIZE) {
+          console.warn(`[Gemini] generateAssessment - Assignment file ${pdfFile} too large (${(stats.size / 1024 / 1024).toFixed(2)}MB), skipping`);
           continue;
         }
 
-        const fileData = await fs.readFile(filePath);
-        const base64 = fileData.toString('base64');
-        console.log(`[Gemini] generateAssessment - Loaded assignment PDF ${pdfFile} (${(fileSize / 1024).toFixed(2)}KB)`);
+        const part = await loadStaticLocalFilePart(filePath, 'application/pdf', MAX_FILE_SIZE);
+        if (!part) continue;
 
-        fileParts.push({
-          inlineData: {
-            mimeType: 'application/pdf',
-            data: base64,
-          },
-        } as Part);
+        console.log(`[Gemini] generateAssessment - Prepared assignment PDF ${pdfFile} (${(stats.size / 1024).toFixed(2)}KB)`);
+        fileParts.push(part);
         assignmentPdfCount++;
       } catch (error) {
         console.warn(`[Gemini] generateAssessment - Could not read assignment file ${pdfFile}:`, error);
@@ -729,6 +756,7 @@ export const generateAssessment = async (
 
     // CBSE Math blueprint (Class 11 / 12) — returns empty string for other subjects/grades
     const cbseMathSection = buildCbseMathPromptSection(subject, grade, totalMarks);
+    const cbsePhysicsSection = buildCbsePhysicsPromptSection(subject, grade, totalMarks);
 
     // Subject-specific general instructions from Assessment Template.pdf
     const subjectInstructionsMap: Record<string, string[]> = {
@@ -853,19 +881,27 @@ export const generateAssessment = async (
       'The question paper is designed to test understanding and application of concepts.',
       'Show necessary steps for full marks.'
     ];
-    const subjectInstructions = subjectInstructionsMap[subject] || defaultInstructions;
+    const physicsInstructionLines = getCbsePhysicsInstructionLines(grade, totalMarks);
+    const subjectInstructions =
+      cbsePhysicsSection && physicsInstructionLines
+        ? physicsInstructionLines
+        : subjectInstructionsMap[subject] || defaultInstructions;
     const instructionsJson = JSON.stringify(subjectInstructions);
+    const usesStructuredCbseAssertionReason = Boolean(cbseMathSection || cbsePhysicsSection);
+    const assertionReasonRequirement = usesStructuredCbseAssertionReason
+      ? 'For assertion_reasoning type: Each question MUST have an Assertion (Statement 1) and a Reason (Statement 2). Use the standard CBSE board format with exactly 4 options: (A) Both Assertion and Reason are true and Reason is the correct explanation of Assertion, (B) Both Assertion and Reason are true but Reason is NOT the correct explanation of Assertion, (C) Assertion is true but Reason is false, (D) Assertion is false but Reason is true. Format the question text as "Assertion (A): [statement]\\nReason (R): [statement]." and include the 4 options in the options array.'
+      : 'For assertion_reasoning type: Each question MUST have an Assertion (Statement 1) and a Reason (Statement 2). Use the standard CBSE format with exactly 5 options: (a) Both Assertion and Reason are true and Reason is the correct explanation of Assertion, (b) Both Assertion and Reason are true but Reason is NOT the correct explanation of Assertion, (c) Assertion is true but Reason is false, (d) Assertion is false but Reason is true, (e) Both Assertion and Reason are false. Format the question text as "Assertion: [statement]. Reason: [statement]." and include the 5 options in the options array.';
 
     const prompt = `Create a ${subject} assessment paper for Class ${grade} with total marks: ${totalMarks}.
 
 Topics: ${chapters.join(', ')}
 Difficulty: ${difficulty}
-Question distribution: ${typesDescription}${objectiveText}${pdfReferenceText}${cbseMathSection}
+Question distribution: ${typesDescription}${objectiveText}${pdfReferenceText}${cbseMathSection}${cbsePhysicsSection}
 
 IMPORTANT REQUIREMENTS:
 1. Number questions SEQUENTIALLY across ALL sections (1, 2, 3, 4, 5... not 1, 11, 21).
 2. For MCQ options, do NOT include letter prefixes - just the option text.
-3. For assertion_reasoning type: Each question MUST have an Assertion (Statement 1) and a Reason (Statement 2). Use the standard CBSE format with exactly 5 options: (a) Both Assertion and Reason are true and Reason is the correct explanation of Assertion, (b) Both Assertion and Reason are true but Reason is NOT the correct explanation of Assertion, (c) Assertion is true but Reason is false, (d) Assertion is false but Reason is true, (e) Both Assertion and Reason are false. Format the question text as "Assertion: [statement]. Reason: [statement]." and include the 5 options in the options array.
+3. ${assertionReasonRequirement}
 4. For Science/Chemistry/Physics: Write chemical formulas and equations using PLAIN ASCII digits for subscripts (e.g., HNO3, KClO3, H2O, XeF2) - do NOT use Unicode subscript characters. Always provide COMPLETE equations including all products, and COMPLETE atomic mass lists (e.g., "H=1 u, N=14 u, O=16 u") - never truncate.
 5. For Mathematics: Write all math notation in PLAIN ASCII - use sin^-1(x) not sin⁻¹(x), x^2 not x², d2y/dx2 not d²y/dx², write "integral" for ∫, "pi" for π, <= for ≤, >= for ≥. Never truncate equations.
 6. You MUST use these EXACT general instructions for ${subject} (from CBSE Assessment Template):
@@ -921,10 +957,13 @@ Only return valid JSON.`;
     const cbseMathSystemNote = cbseMathSection
       ? ' You MUST strictly follow the CBSE Mathematics Question Paper Blueprint provided in the prompt — unit-wise marks distribution, Bloom\'s taxonomy cognitive-level distribution, and 33% internal choice rules are MANDATORY and must not be deviated from.'
       : '';
+    const cbsePhysicsSystemNote = cbsePhysicsSection
+      ? ' You MUST strictly follow the CBSE Physics theory blueprint provided in the prompt — unit/chapter weightage distribution and cognitive/rubric distribution are MANDATORY and must not be deviated from.'
+      : '';
 
     const model = genAI.getGenerativeModel({
       model: DEFAULT_MODEL,
-      systemInstruction: `You are an expert assessment designer who creates question papers following CBSE/board standards.${cbseMathSystemNote} ${fileParts.length > 0 ? 'You must reference and follow the assessment frameworks and guidelines from the attached documents, as well as the format, style, and question patterns from any sample question papers provided.' : ''}`,
+      systemInstruction: `You are an expert assessment designer who creates question papers following CBSE/board standards.${cbseMathSystemNote}${cbsePhysicsSystemNote} ${fileParts.length > 0 ? 'You must reference and follow the assessment frameworks and guidelines from the attached documents, as well as the format, style, and question patterns from any sample question papers provided.' : ''}`,
       generationConfig: {
         temperature: 0.7,
         responseMimeType: 'application/json',
