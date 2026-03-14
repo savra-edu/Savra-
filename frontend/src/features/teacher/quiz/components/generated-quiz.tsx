@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Share2, Download, Printer, FileText, Edit, Check } from "lucide-react"
 import { getAppBaseUrl } from "@/lib/app-url"
@@ -8,11 +8,13 @@ import PublishDialog from "./publish-dialog"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
+import { useGeneration } from "@/contexts/generation-context"
 import { downloadQuizPDF, downloadQuizAnswerKeyPDF } from "@/lib/pdf-generator"
 import { downloadQuizDoc, downloadQuizAnswerKeyDoc } from "@/lib/doc-generator"
 import { DownloadDropdown } from "@/components/download-dropdown"
 import { Quiz as QuizType } from "@/types/api"
 import { EditableQuiz } from "./editable-quiz"
+import { getGenerationStageLabel, normalizeGenerationProgress } from "@/lib/generation-jobs"
 
 interface Question {
   id: string
@@ -47,15 +49,25 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
   const searchParams = useSearchParams()
   const quizId = searchParams.get("id")
   const { user } = useAuth()
+  const { activeJob } = useGeneration()
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
 
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string[] }>({})
+  const isCurrentQuizJob = activeJob?.artifactType === "quiz" && activeJob.artifactId === quizId
+  const isCurrentQuizGenerating =
+    isCurrentQuizJob && (activeJob.status === "queued" || activeJob.status === "running")
 
   // Use API questions or fallback to empty array
   const questions = quiz?.questions || []
+
+  useEffect(() => {
+    if (activeJob?.status === "completed" && isCurrentQuizJob) {
+      onSave?.()
+    }
+  }, [activeJob?.status, isCurrentQuizJob, onSave])
 
   const handleCheckboxChange = (questionIndex: number, option: string) => {
     setSelectedAnswers((prev) => {
@@ -297,12 +309,13 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
   const topics = quiz?.chapters?.join(", ") || "Fractions"
   const totalQuestions = quiz?.numQuestions || questions.length || 10
   const maxMarks = totalQuestions // 1 mark per MCQ question
+  const hasQuizContent = questions.length > 0
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
         {/* Mobile: Plan Name, Duration, Edit */}
-        <div className="flex-shrink-0 lg:hidden bg-[#E9E9E9] px-4 py-3 rounded-t-2xl flex items-center justify-between">
+        <div className="shrink-0 lg:hidden bg-[#E9E9E9] px-4 py-3 rounded-t-2xl flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#242220]">{quizTitle}</h2>
           <div className="flex items-center gap-3">
             <span className="text-base font-medium text-[#242220]">{quizDuration}</span>
@@ -318,7 +331,7 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
         </div>
 
         {/* Desktop Header with Title and Edit */}
-        <div className="flex-shrink-0 hidden lg:flex bg-[#E9E9E9] px-12 py-6 rounded-t-2xl items-center justify-between">
+        <div className="shrink-0 hidden lg:flex bg-[#E9E9E9] px-12 py-6 rounded-t-2xl items-center justify-between">
           <h1 className="text-xl font-bold">{quizTitle}</h1>
           <button
             onClick={handleEditToggle}
@@ -390,10 +403,32 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
             {/* Questions Section */}
             <div className="mb-4">
               {questions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No questions generated yet.</p>
-                  <p className="text-sm mt-2">Questions will appear here once generated.</p>
-                </div>
+                isCurrentQuizGenerating && activeJob ? (
+                  <div className="mx-auto max-w-xl rounded-2xl border border-[#E8E2F0] bg-[#F8F5FC] p-6 text-center">
+                    <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-[#D9C6FF] border-t-[#9B61FF] animate-spin" />
+                    <h3 className="text-lg font-semibold text-[#242220]">Your quiz is on the way</h3>
+                    <p className="mt-2 text-sm leading-6 text-[#6A6A6A]">
+                      You can keep browsing the app and open the floating button whenever you want to check progress.
+                    </p>
+                    <div className="mt-5 text-left">
+                      <div className="mb-2 flex items-center justify-between text-sm font-medium text-[#353535]">
+                        <span>{getGenerationStageLabel(activeJob.stage)}</span>
+                        <span>{normalizeGenerationProgress(activeJob)}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-[#E8E2F0]">
+                        <div
+                          className="h-full rounded-full bg-[#9B61FF] transition-[width] duration-500"
+                          style={{ width: `${normalizeGenerationProgress(activeJob)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No questions generated yet.</p>
+                    <p className="text-sm mt-2">Questions will appear here once generated.</p>
+                  </div>
+                )
               ) : (
                 <div className="space-y-6">
                   {questions.map((question, index) => (
@@ -427,7 +462,13 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex-shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
+        <div className="shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
+          {!hasQuizContent && isCurrentQuizGenerating ? (
+            <p className="text-sm text-[#6A6A6A]">
+              Footer actions will unlock automatically after the quiz finishes generating.
+            </p>
+          ) : (
+          <>
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4">
             {/* First Row: Print, Save draft, Share, Answer Key */}
@@ -529,6 +570,8 @@ export default function GeneratedQuiz({ quiz, onSave }: GeneratedQuizProps) {
               </PublishDialog>
             </div>
           </div>
+          </>
+          )}
         </div>
         </>
         )}

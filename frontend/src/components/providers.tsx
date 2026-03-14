@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/auth-context';
 import { DataProvider } from '@/contexts/data-context';
+import { GenerationProvider } from '@/contexts/generation-context';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -33,7 +34,9 @@ export function Providers({ children }: ProvidersProps) {
   const content = (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <DataProvider>{children}</DataProvider>
+        <DataProvider>
+          <GenerationProvider>{children}</GenerationProvider>
+        </DataProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -238,6 +238,31 @@ export interface Assessment {
   chapters?: Chapter[];
 }
 
+export type GenerationArtifactType = 'lesson' | 'quiz' | 'assessment';
+export type GenerationJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type GenerationJobStage =
+  | 'queued'
+  | 'preparing'
+  | 'generating'
+  | 'saving'
+  | 'completed'
+  | 'failed';
+
+export interface GenerationJob {
+  id: string;
+  teacherId: string;
+  artifactType: GenerationArtifactType;
+  artifactId: string;
+  status: GenerationJobStatus;
+  stage: GenerationJobStage;
+  progress: number;
+  errorMessage?: string | null;
+  startedAt?: string | Date | null;
+  completedAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
 // Announcement types
 export interface Announcement {
   id: string;

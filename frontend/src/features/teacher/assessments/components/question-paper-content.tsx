@@ -1,11 +1,12 @@
 "use client"
 
-import { Suspense, useState, useCallback } from "react"
+import { Suspense, useState, useCallback, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Edit, Share2, Printer, Check, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { queryKeys, useApiQuery } from "@/hooks/use-query"
 import { useAuth } from "@/contexts/auth-context"
+import { useGeneration } from "@/contexts/generation-context"
 import { downloadAssessmentPDF, downloadAssessmentAnswerKeyPDF } from "@/lib/pdf-generator"
 import { downloadAssessmentDoc, downloadAssessmentAnswerKeyDoc } from "@/lib/doc-generator"
 import { normalizeScientificText } from "@/lib/scientific-text"
@@ -13,6 +14,10 @@ import { DownloadDropdown } from "@/components/download-dropdown"
 import { getAppBaseUrl } from "@/lib/app-url"
 import { EditableQuestionPaper } from "./editable-question-paper"
 import { api } from "@/lib/api"
+import {
+  getGenerationStageLabel,
+  normalizeGenerationProgress,
+} from "@/lib/generation-jobs"
 
 interface Question {
   number: number
@@ -80,6 +85,7 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
   const searchParams = useSearchParams()
   const assessmentId = searchParams.get("id")
   const { user } = useAuth()
+  const { activeJob } = useGeneration()
 
   // State for share action
   const [linkCopied, setLinkCopied] = useState(false)
@@ -92,6 +98,11 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
   })
 
   const [isSaving, setIsSaving] = useState(false)
+
+  const isCurrentAssessmentJob =
+    activeJob?.artifactType === "assessment" && activeJob.artifactId === assessmentId
+  const isCurrentAssessmentGenerating =
+    isCurrentAssessmentJob && (activeJob.status === "queued" || activeJob.status === "running")
 
   const handleModifyPrompt = () => {
     router.push(`/assessments/create/modify?id=${assessmentId}`)
@@ -205,25 +216,17 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
     }
   }, [assessmentId, assessment?.title])
 
-  // Fallback questions for preview/demo mode
-  const FALLBACK_QUESTIONS: Question[] = [
-    { number: 1, text: "Which of the following represents the largest fraction?", options: ["3/7", "5/7", "4/9", "2/3"] },
-    { number: 2, text: "A fraction equivalent to 6/8 is:", options: ["3/4", "2/3", "4/5", "5/6"] },
-    { number: 3, text: "What is the sum of 1/4 + 1/2?", options: ["2/6", "3/4", "1/3", "3/6"] },
-    { number: 4, text: "Which fraction is the smallest?", options: ["1/2", "1/3", "1/4", "1/5"] },
-    { number: 5, text: "Convert 0.5 to a fraction:", options: ["1/4", "1/2", "1/3", "2/3"] },
-    { number: 6, text: "What is 3/4 of 16?", options: ["10", "12", "14", "15"] },
-    { number: 7, text: "Which of the following is a proper fraction?", options: ["5/4", "4/3", "3/4", "6/5"] },
-    { number: 8, text: "Find the value of 2/3 - 1/6:", options: ["1/3", "1/2", "2/3", "3/4"] },
-    { number: 9, text: "What is the reciprocal of 3/5?", options: ["5/3", "3/5", "5/2", "2/5"] },
-    { number: 10, text: "Which fraction is greater than 1/2?", options: ["2/5", "3/7", "4/9", "5/8"] },
-  ]
-
-  // Extract questions from questionPaper - handle both flat and sectioned formats
   const questionPaper = assessment?.questionPaper
+  const hasQuestionPaperContent = Boolean(
+    questionPaper &&
+      (
+        (questionPaper.questions?.length ?? 0) > 0 ||
+        questionPaper.sections?.some((section) => section.questions.length > 0)
+      )
+  )
   const questions = questionPaper?.questions ||
     questionPaper?.sections?.flatMap(s => s.questions) ||
-    FALLBACK_QUESTIONS
+    []
 
   const subject = assessment?.subject?.name || "Mathematics"
   const grade = assessment?.class ? `${assessment.class.grade}-${assessment.class.section}` : "VII"
@@ -246,11 +249,64 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
     "Use of calculator is not permitted.",
   ]
 
+  useEffect(() => {
+    if (activeJob?.status === "completed" && isCurrentAssessmentJob) {
+      void refetch()
+    }
+  }, [activeJob?.status, isCurrentAssessmentJob, refetch])
+
   // Loading skeleton
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-10 h-10 border-4 border-[#DF6647] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (!hasQuestionPaperContent && isCurrentAssessmentGenerating && activeJob) {
+    const progress = normalizeGenerationProgress(activeJob)
+
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex-1 rounded-2xl border border-[#E8E2F0] bg-white p-6 shadow-sm lg:p-10">
+          <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center text-center">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#F1E9FF]">
+              <div className="h-7 w-7 rounded-full border-4 border-[#D9C6FF] border-t-[#9B61FF] animate-spin" />
+            </div>
+            <h3 className="text-xl font-semibold text-[#242220]">Your question paper is on the way</h3>
+            <p className="mt-2 text-sm leading-6 text-[#6A6A6A]">
+              You can stay here or keep browsing the app. Use the floating button to check progress anytime.
+            </p>
+            <div className="mt-6 w-full rounded-2xl bg-[#F8F5FC] p-5 text-left">
+              <div className="mb-3 flex items-center justify-between text-sm font-medium text-[#353535]">
+                <span>{getGenerationStageLabel(activeJob.stage)}</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#E8E2F0]">
+                <div
+                  className="h-full rounded-full bg-[#9B61FF] transition-[width] duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasQuestionPaperContent) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex-1 rounded-2xl border border-[#E8E2F0] bg-white p-6 shadow-sm lg:p-10">
+          <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center text-center">
+            <h3 className="text-xl font-semibold text-[#242220]">No question paper available yet</h3>
+            <p className="mt-2 text-sm leading-6 text-[#6A6A6A]">
+              Start a new generation or retry the existing one to populate this page.
+            </p>
+          </div>
+        </div>
       </div>
     )
   }

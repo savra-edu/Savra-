@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { authMiddleware, authorize } from '../middleware/auth';
 import { validate, validateQuery } from '../middleware/validate';
-import { generateQuizQuestions } from '../lib/gemini';
 import {
   createQuizSchema,
   updateQuizSchema,
@@ -15,6 +14,7 @@ import {
 } from '../schemas/quiz';
 import { successResponse, errorResponse, notFoundResponse } from '../utils/response';
 import { QuizStatus, DifficultyLevel } from '@prisma/client';
+import { createGenerationJob, serializeGenerationJob } from '../lib/generation-jobs';
 
 const router = Router();
 
@@ -574,97 +574,31 @@ router.post(
         return errorResponse(res, 'Questions already exist. Set regenerate to true to regenerate.', 400, 'QUESTIONS_EXIST');
       }
 
-      // Extract all needed data BEFORE AI call to avoid holding DB connections
-      const subjectName = quiz.subject.name;
-      const chapterNames = quiz.chapters.map((c) => c.chapter.name);
-      const questionsToGenerate = numberOfQuestions || quiz.totalQuestions;
-      const difficultyLevel = quiz.difficultyLevel as 'easy' | 'medium' | 'hard';
-      const totalMarks = quiz.totalMarks;
-      const totalQuestions = quiz.totalQuestions;
-      const quizObjective = quiz.objective || undefined;
-
-      // Generate questions using Gemini AI (this is the long operation)
-      let generatedQuestions;
       try {
-        generatedQuestions = await generateQuizQuestions(
-          subjectName,
-          chapterNames,
-          questionsToGenerate,
-          difficultyLevel,
-          quizObjective,
-          quiz.referenceFileUrl ?? undefined
+        const job = await createGenerationJob({
+          teacherId,
+          artifactType: 'quiz',
+          artifactId: quizId,
+          payload: {
+            regenerate: !!regenerate,
+            ...(numberOfQuestions ? { numberOfQuestions } : {}),
+          },
+        });
+
+        return successResponse(
+          res,
+          {
+            quizId,
+            job: serializeGenerationJob(job as any),
+          },
+          202
         );
       } catch (aiError) {
-        console.error('Gemini AI generation error:', aiError);
-        return errorResponse(
-          res,
-          'Failed to generate questions. Please check Gemini API configuration.',
-          500,
-          'AI_GENERATION_FAILED'
-        );
+        if (aiError instanceof Error && aiError.message.includes('already in progress')) {
+          return errorResponse(res, aiError.message, 409, 'GENERATION_ALREADY_IN_PROGRESS');
+        }
+        throw aiError;
       }
-
-      // Now save to database with fresh connections
-      // If regenerating, delete existing questions first
-      if (regenerate && existingQuestionsCount > 0) {
-        await prisma.question.deleteMany({ where: { quizId } });
-      }
-
-      // Create questions with options
-      const marksPerQuestion = Math.ceil(totalMarks / totalQuestions);
-
-      // Use Promise.all for parallel creation (faster and more reliable)
-      await Promise.all(
-        generatedQuestions.map((q: { questionText: string; options: Array<{ label: string; text: string; isCorrect: boolean }> }, i: number) =>
-          prisma.question.create({
-            data: {
-              quizId,
-              questionText: q.questionText,
-              questionType: 'mcq',
-              marks: marksPerQuestion,
-              orderIndex: i + 1,
-              options: {
-                create: q.options.map((opt) => ({
-                  optionLabel: opt.label,
-                  optionText: opt.text,
-                  isCorrect: opt.isCorrect,
-                })),
-              },
-            },
-          })
-        )
-      );
-
-      // Fetch updated quiz with questions
-      const updatedQuiz = await prisma.quiz.findUnique({
-        where: { id: quizId },
-        include: {
-          questions: {
-            select: {
-              id: true,
-              questionText: true,
-              questionType: true,
-              marks: true,
-              orderIndex: true,
-              options: {
-                select: {
-                  id: true,
-                  optionLabel: true,
-                  optionText: true,
-                  isCorrect: true,
-                },
-              },
-            },
-            orderBy: { orderIndex: 'asc' },
-          },
-        },
-      });
-
-      return successResponse(res, {
-        quizId: updatedQuiz?.id,
-        questionsGenerated: generatedQuestions.length,
-        questions: updatedQuiz?.questions,
-      });
     } catch (error) {
       next(error);
     }

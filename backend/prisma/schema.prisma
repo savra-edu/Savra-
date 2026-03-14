@@ -50,6 +50,28 @@ enum AttemptStatus {
   graded
 }
 
+enum GenerationArtifactType {
+  lesson
+  quiz
+  assessment
+}
+
+enum GenerationJobStatus {
+  queued
+  running
+  completed
+  failed
+}
+
+enum GenerationJobStage {
+  queued
+  preparing
+  generating
+  saving
+  completed
+  failed
+}
+
 // Base User Table
 model User {
   id           String    @id @default(uuid())
@@ -163,9 +185,33 @@ model Teacher {
   lessons       Lesson[]
   quizzes       Quiz[]
   assessments   Assessment[]
+  generationJobs GenerationJob[]
   announcements Announcement[]
 
   @@map("teachers")
+}
+
+model GenerationJob {
+  id           String                 @id @default(uuid())
+  teacherId    String                 @map("teacher_id")
+  artifactType GenerationArtifactType @map("artifact_type")
+  artifactId   String                 @map("artifact_id")
+  status       GenerationJobStatus    @default(queued)
+  stage        GenerationJobStage     @default(queued)
+  progress     Int                    @default(0)
+  payload      Json?
+  errorMessage String?                @map("error_message") @db.Text
+  startedAt    DateTime?              @map("started_at")
+  completedAt  DateTime?              @map("completed_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([artifactType, artifactId])
+  @@map("generation_jobs")
 }
 
 // Student Profile

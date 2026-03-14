@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { DurationSelect } from "@/features/teacher/lesson-plan/components/duration-selector"
 import { ObjectiveSection } from "@/features/teacher/lesson-plan/components/objective-section"
-import { GeneratingOverlay } from "@/components/generating-overlay"
 import { Button } from "@/components/ui/button"
 import { Upload } from "lucide-react"
 import { api } from "@/lib/api"
@@ -12,7 +11,8 @@ import { useChapters } from "@/hooks/use-chapters"
 import { useTeacherSubjectsData } from "@/hooks/use-subjects"
 import { useTeacherClasses } from "@/hooks/use-classes"
 import { useAuth } from "@/contexts/auth-context"
-import { LessonPeriod } from "@/types/api"
+import { useGeneration } from "@/contexts/generation-context"
+import { LessonPeriod, GenerationJob } from "@/types/api"
 
 interface Lesson {
     id: string
@@ -34,6 +34,7 @@ interface CreateLessonProps {
 export default function CreateLesson({ selectedSubject, selectedClass }: CreateLessonProps) {
     const router = useRouter()
     const { user } = useAuth()
+    const { trackJob } = useGeneration()
 
     // Fetch teacher's subjects and classes to get IDs
     const { data: subjectsData } = useTeacherSubjectsData()
@@ -218,18 +219,22 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
             const response = await api.post<{ success: boolean; data: Lesson }>("/lessons", lessonData)
             const lesson = response.data
 
-            // Generate AI content for the lesson plan
-            try {
-                const generateResponse = await api.post<{ success: boolean; data: Lesson }>(`/lessons/${lesson.id}/generate`, { regenerate: false })
-                console.log("Lesson content generated:", generateResponse.data)
-                // Small delay to ensure database is updated
-                await new Promise(resolve => setTimeout(resolve, 500))
-            } catch (generateError) {
-                console.error("Failed to generate lesson content:", generateError)
-                // Continue to edit page even if generation fails
-            }
+            const generateResponse = await api.post<{
+                success: boolean
+                data: {
+                    lessonId: string
+                    job: GenerationJob
+                }
+            }>(`/lessons/${lesson.id}/generate`, { regenerate: false })
 
-            // Navigate to edit page with lesson ID
+            trackJob(generateResponse.data.job, {
+                artifactType: "lesson",
+                artifactId: lesson.id,
+                targetPath: `/lesson-plan/edit?id=${lesson.id}`,
+                label: lesson.title || generatedTopic || "Lesson plan",
+            })
+
+            // Navigate immediately; generation continues safely in the background.
             router.push(`/lesson-plan/edit?id=${lesson.id}`)
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create lesson plan")
@@ -240,7 +245,6 @@ export default function CreateLesson({ selectedSubject, selectedClass }: CreateL
 
     return (
         <div className="flex flex-col h-full relative">
-            {isLoading && <GeneratingOverlay type="lesson" onCancel={() => setIsLoading(false)} />}
             {/* Scrollable Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
                 {/* Chapters Section */}

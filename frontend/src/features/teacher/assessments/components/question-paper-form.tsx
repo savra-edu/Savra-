@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/select"
 import { Plus, Edit2, X, Upload } from "lucide-react"
 import AddTypeDialog from "./add-type-dialog"
-import { GeneratingOverlay } from "@/components/generating-overlay"
 import { api } from "@/lib/api"
 import { useChapters } from "@/hooks/use-chapters"
+import { useGeneration } from "@/contexts/generation-context"
+import type { GenerationJob } from "@/types/api"
 
 interface Chapter {
   id: string
@@ -53,6 +54,7 @@ const QUESTION_TYPE_DISPLAY_NAMES: Record<string, string> = {
 
 export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, selectedGrade }: QuestionPaperFormProps) {
   const router = useRouter()
+  const { trackJob } = useGeneration()
 
   // Chapters - load based on subject + grade (grade-specific CBSE/NCERT chapters)
   const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
@@ -160,10 +162,22 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
       const response = await api.post<{ success: boolean; data: Assessment }>("/assessments", assessmentData)
       const assessment = response.data
 
-      // Generate questions
-      await api.post(`/assessments/${assessment.id}/generate`, {})
+      const generationResponse = await api.post<{
+        success: boolean
+        data: {
+          assessmentId: string
+          job: GenerationJob
+        }
+      }>(`/assessments/${assessment.id}/generate`, {})
 
-      // Navigate to generated assessment page
+      trackJob(generationResponse.data.job, {
+        artifactType: "assessment",
+        artifactId: assessment.id,
+        targetPath: `/assessments/create/question-paper?id=${assessment.id}`,
+        label: assessment.title || "Question paper",
+      })
+
+      // Navigate immediately; generation continues safely in the background.
       router.push(`/assessments/create/question-paper?id=${assessment.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate assessment")
@@ -218,7 +232,6 @@ export default function QuestionPaperForm({ selectedClassId, selectedSubjectId, 
 
   return (
     <div className="flex flex-col h-full relative">
-      {isLoading && <GeneratingOverlay type="assessment" onCancel={() => setIsLoading(false)} />}
       {/* Scrollable Content Area */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
         {/* Chapters + Question Paper Options */}

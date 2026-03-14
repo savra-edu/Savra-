@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { authMiddleware, authorize } from '../middleware/auth';
 import { validate, validateQuery } from '../middleware/validate';
-import { generateAssessment } from '../lib/gemini';
 import {
   createAssessmentSchema,
   updateAssessmentSchema,
@@ -13,6 +12,7 @@ import {
 } from '../schemas/assessment';
 import { successResponse, errorResponse, notFoundResponse } from '../utils/response';
 import { QuizStatus, DifficultyLevel, QuestionType } from '@prisma/client';
+import { createGenerationJob, serializeGenerationJob } from '../lib/generation-jobs';
 
 const router = Router();
 
@@ -589,60 +589,28 @@ router.post(
         return errorResponse(res, 'Question paper already exists. Set regenerate to true to regenerate.', 400, 'PAPER_EXISTS');
       }
 
-      // Extract all needed data BEFORE AI call to avoid holding DB connections
-      const subjectName = assessment.subject.name;
-      const grade = assessment.class.grade;
-      const chapterNames = assessment.chapters.map((c) => c.chapter.name);
-      const questionTypesForAI = assessment.questionTypes.map((qt) => ({
-        type: qt.questionType,
-        count: qt.numberOfQuestions,
-        marks: qt.marksPerQuestion,
-      }));
-      const totalMarks = assessment.totalMarks;
-      const difficultyLevel = assessment.difficultyLevel;
-      const assessmentObjective = assessment.objective || undefined;
-
-      // Generate question paper using Gemini AI (this is the long operation)
-      let generatedPaper;
       try {
-        generatedPaper = await generateAssessment(
-          subjectName,
-          chapterNames,
-          questionTypesForAI,
-          totalMarks,
-          difficultyLevel,
-          grade,
-          assessmentObjective,
-          assessment.referenceFileUrl ?? undefined
+        const job = await createGenerationJob({
+          teacherId,
+          artifactType: 'assessment',
+          artifactId: assessmentId,
+          payload: { regenerate: !!regenerate },
+        });
+
+        return successResponse(
+          res,
+          {
+            assessmentId,
+            job: serializeGenerationJob(job as any),
+          },
+          202
         );
       } catch (aiError) {
-        console.error('Gemini AI generation error:', aiError);
-        return errorResponse(
-          res,
-          'Failed to generate question paper. Please check Gemini API configuration.',
-          500,
-          'AI_GENERATION_FAILED'
-        );
+        if (aiError instanceof Error && aiError.message.includes('already in progress')) {
+          return errorResponse(res, aiError.message, 409, 'GENERATION_ALREADY_IN_PROGRESS');
+        }
+        throw aiError;
       }
-
-      // Update assessment with generated paper (fresh DB connection)
-      const updatedAssessment = await prisma.assessment.update({
-        where: { id: assessmentId },
-        data: { questionPaper: generatedPaper },
-        select: {
-          id: true,
-          title: true,
-          questionPaper: true,
-          updatedAt: true,
-        },
-      });
-
-      return successResponse(res, {
-        id: updatedAssessment.id,
-        title: updatedAssessment.title,
-        questionPaper: updatedAssessment.questionPaper,
-        generatedAt: updatedAssessment.updatedAt,
-      });
     } catch (error) {
       next(error);
     }

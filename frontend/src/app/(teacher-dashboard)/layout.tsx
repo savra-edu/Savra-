@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { TeacherBottomNav } from "@/components/teacher-bottom-nav"
+import { GenerationFloatingUI } from "@/components/generation-floating-ui"
 import { useAuth } from "@/contexts/auth-context"
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -60,6 +61,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           {children}
         </div>
         {!shouldHideBottomNav && <TeacherBottomNav />}
+        <GenerationFloatingUI />
       </main>
     </AuthGuard>
   )
