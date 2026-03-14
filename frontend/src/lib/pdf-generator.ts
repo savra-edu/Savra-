@@ -1,7 +1,7 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Lesson, Quiz } from "@/types/api"
-import { normalizeScientificText } from "./scientific-text"
+import { normalizeScientificTextForPdf } from "./scientific-text"
 
 // Format date for display: "2nd Dec'25"
 function formatDateForDisplay(dateString: string | null | undefined): string {
@@ -24,6 +24,151 @@ function formatDateForDisplay(dateString: string | null | undefined): string {
     return `${ordinal(day)} ${month}'${year}`
   } catch {
     return dateString
+  }
+}
+
+type ScientificTextToken = {
+  text: string
+  isSuperscript: boolean
+  isWhitespace: boolean
+}
+
+const PDF_CARET_EXPONENT_PATTERN = /\^(\([0-9A-Za-z+\-=]+\)|[+\-]?[0-9A-Za-z]+)/g
+
+function tokenizeScientificText(text: string): ScientificTextToken[] {
+  const normalized = normalizeScientificTextForPdf(text)
+  const tokens: ScientificTextToken[] = []
+  let lastIndex = 0
+
+  const pushPlainText = (value: string) => {
+    for (const part of value.split(/(\s+)/)) {
+      if (!part) continue
+      tokens.push({
+        text: part,
+        isSuperscript: false,
+        isWhitespace: /^\s+$/.test(part),
+      })
+    }
+  }
+
+  for (const match of normalized.matchAll(PDF_CARET_EXPONENT_PATTERN)) {
+    const matchIndex = match.index ?? 0
+    pushPlainText(normalized.slice(lastIndex, matchIndex))
+    tokens.push({
+      text: match[1] || "",
+      isSuperscript: true,
+      isWhitespace: false,
+    })
+    lastIndex = matchIndex + match[0].length
+  }
+
+  pushPlainText(normalized.slice(lastIndex))
+
+  return tokens
+}
+
+function measurePdfTextWidth(doc: jsPDF, text: string, fontSize: number): number {
+  const previousFontSize = doc.getFontSize()
+  doc.setFontSize(fontSize)
+  const width = doc.getTextWidth(text)
+  doc.setFontSize(previousFontSize)
+  return width
+}
+
+function wrapScientificText(doc: jsPDF, text: string, width: number, baseFontSize: number, superscriptFontSize: number) {
+  const paragraphs = normalizeScientificTextForPdf(text).split(/\n/)
+  const lines: ScientificTextToken[][] = []
+
+  for (const paragraph of paragraphs) {
+    const tokens = tokenizeScientificText(paragraph)
+    let currentLine: ScientificTextToken[] = []
+    let currentWidth = 0
+
+    const commitLine = () => {
+      if (currentLine.length === 0) {
+        lines.push([])
+        return
+      }
+
+      while (currentLine.length > 0 && currentLine[0].isWhitespace) {
+        currentLine.shift()
+      }
+      while (currentLine.length > 0 && currentLine[currentLine.length - 1].isWhitespace) {
+        currentLine.pop()
+      }
+
+      lines.push([...currentLine])
+      currentLine = []
+      currentWidth = 0
+    }
+
+    for (const token of tokens) {
+      const tokenWidth = measurePdfTextWidth(
+        doc,
+        token.text,
+        token.isSuperscript ? superscriptFontSize : baseFontSize
+      )
+
+      if (currentLine.length === 0 && token.isWhitespace) {
+        continue
+      }
+
+      if (!token.isWhitespace && currentLine.length > 0 && currentWidth + tokenWidth > width) {
+        commitLine()
+      }
+
+      if (currentLine.length === 0 && token.isWhitespace) {
+        continue
+      }
+
+      currentLine.push(token)
+      currentWidth += tokenWidth
+    }
+
+    commitLine()
+  }
+
+  return lines
+}
+
+function drawScientificText(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  width: number,
+  options?: {
+    lineHeight?: number
+    baseFontSize?: number
+    superscriptFontSize?: number
+    superscriptRise?: number
+  }
+) {
+  const baseFontSize = options?.baseFontSize ?? doc.getFontSize()
+  const superscriptFontSize = options?.superscriptFontSize ?? Math.max(6, baseFontSize - 2)
+  const superscriptRise = options?.superscriptRise ?? 1.8
+  const lineHeight = options?.lineHeight ?? baseFontSize * 0.45
+  const lines = wrapScientificText(doc, text, width, baseFontSize, superscriptFontSize)
+  const previousFontSize = doc.getFontSize()
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex]
+    let cursorX = x
+    const lineY = y + lineIndex * lineHeight
+
+    for (const token of line) {
+      const tokenFontSize = token.isSuperscript ? superscriptFontSize : baseFontSize
+      doc.setFontSize(tokenFontSize)
+      doc.text(token.text, cursorX, token.isSuperscript ? lineY - superscriptRise : lineY)
+      cursorX += doc.getTextWidth(token.text)
+    }
+  }
+
+  doc.setFontSize(previousFontSize)
+
+  return {
+    lines,
+    height: Math.max(lines.length, 1) * lineHeight,
   }
 }
 
@@ -558,7 +703,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
     lineHeight: number,
     options?: { align?: "left" | "center" | "right" }
   ) => {
-    const lines = doc.splitTextToSize(normalizeScientificText(text), width)
+    const lines = doc.splitTextToSize(normalizeScientificTextForPdf(text), width)
     doc.text(lines, x, yPos, options)
     yPos += lines.length * lineHeight
     return lines
@@ -572,7 +717,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
   doc.setFont("helvetica", "normal")
   doc.setFontSize(9)
   for (let i = 0; i < instructions.length; i++) {
-    const instText = normalizeScientificText(String(instructions[i]))
+    const instText = normalizeScientificTextForPdf(String(instructions[i]))
     const lines = doc.splitTextToSize(`${i + 1}. ${instText}`, contentWidth - 5)
     doc.text(lines, margin + 3, yPos)
     yPos += lines.length * 5 + 1
@@ -647,28 +792,37 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
         doc.setFontSize(10)
         doc.text(qNum, margin, yPos)
         doc.setFont("helvetica", "normal")
-
-        const qLines = doc.splitTextToSize(normalizeScientificText(question.text || ""), contentWidth - 22)
-        doc.text(qLines, qTextX, yPos)
+        const marksLabel =
+          question.marks != null ? `[${question.marks} mark${question.marks > 1 ? "s" : ""}]` : ""
+        const questionBlock = drawScientificText(doc, question.text || "", qTextX, yPos, contentWidth - 22 - (marksLabel ? 18 : 0), {
+          lineHeight: 4.5,
+          baseFontSize: 10,
+          superscriptFontSize: 7.5,
+          superscriptRise: 1.6,
+        })
 
         if (question.marks != null) {
           doc.setFontSize(8)
           doc.setTextColor(100, 100, 100)
-          doc.text(`[${question.marks} mark${question.marks > 1 ? "s" : ""}]`, pageWidth - margin, yPos, { align: "right" })
+          doc.text(marksLabel, pageWidth - margin, yPos, { align: "right" })
           doc.setTextColor(0, 0, 0)
           doc.setFontSize(10)
         }
 
-        yPos += qLines.length * 4.5 + 1
+        yPos += questionBlock.height + 1
 
         if (question.options && question.options.length > 0) {
           const optionLabels = ["A", "B", "C", "D", "E", "F"]
           for (let j = 0; j < question.options.length; j++) {
             ensurePageSpace(8)
-            const optText = `(${optionLabels[j]}) ${normalizeScientificText(question.options[j] || "")}`
-            const optLines = doc.splitTextToSize(optText, contentWidth - 18)
-            doc.text(optLines, qTextX, yPos)
-            yPos += optLines.length * 4 + 0.8
+            const optText = `(${optionLabels[j]}) ${question.options[j] || ""}`
+            const optionBlock = drawScientificText(doc, optText, qTextX, yPos, contentWidth - 18, {
+              lineHeight: 4,
+              baseFontSize: 10,
+              superscriptFontSize: 7.5,
+              superscriptRise: 1.6,
+            })
+            yPos += optionBlock.height + 0.8
           }
         }
 
@@ -678,9 +832,13 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
           doc.text("OR", pageWidth / 2, yPos, { align: "center" })
           yPos += 4.5
           doc.setFont("helvetica", "normal")
-          const orLines = doc.splitTextToSize(normalizeScientificText(question.orText), contentWidth - 22)
-          doc.text(orLines, qTextX, yPos)
-          yPos += orLines.length * 4.5 + 1
+          const orBlock = drawScientificText(doc, question.orText, qTextX, yPos, contentWidth - 22, {
+            lineHeight: 4.5,
+            baseFontSize: 10,
+            superscriptFontSize: 7.5,
+            superscriptRise: 1.6,
+          })
+          yPos += orBlock.height + 1
         }
 
         yPos += 4
@@ -703,7 +861,7 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
       if (section.instructions) {
         doc.setFont("helvetica", "italic")
         doc.setFontSize(9)
-        const instText = normalizeScientificText(section.instructions)
+        const instText = normalizeScientificTextForPdf(section.instructions)
         const instLines = doc.splitTextToSize(instText, contentWidth)
         doc.text(instLines, margin, yPos)
         yPos += instLines.length * 5 + 3
@@ -724,19 +882,23 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
         doc.setFont("helvetica", "normal")
         const qTextX = margin + 10
-        const qText = normalizeScientificText(question.text || "")
-        const qLines = doc.splitTextToSize(qText, contentWidth - 20)
-        doc.text(qLines, qTextX, yPos)
+        const marksLabel = question.marks ? `[${question.marks} marks]` : ""
+        const questionBlock = drawScientificText(doc, question.text || "", qTextX, yPos, contentWidth - 20 - (marksLabel ? 18 : 0), {
+          lineHeight: 5,
+          baseFontSize: 10,
+          superscriptFontSize: 7.5,
+          superscriptRise: 1.6,
+        })
 
         if (question.marks) {
           doc.setFontSize(8)
           doc.setTextColor(100, 100, 100)
-          doc.text(`[${question.marks} marks]`, pageWidth - margin - 15, yPos)
+          doc.text(marksLabel, pageWidth - margin, yPos, { align: "right" })
           doc.setTextColor(0, 0, 0)
           doc.setFontSize(10)
         }
 
-        yPos += qLines.length * 5 + 2
+        yPos += questionBlock.height + 2
 
         if (question.options && question.options.length > 0) {
           const optionLabels = ["a", "b", "c", "d", "e", "f"]
@@ -745,10 +907,14 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
               doc.addPage()
               yPos = 15
             }
-            const optText = `${optionLabels[j]}) ${normalizeScientificText(question.options[j] || "")}`
-            const optLines = doc.splitTextToSize(optText, contentWidth - 15)
-            doc.text(optLines, margin + 10, yPos)
-            yPos += optLines.length * 4 + 1
+            const optText = `${optionLabels[j]}) ${question.options[j] || ""}`
+            const optionBlock = drawScientificText(doc, optText, margin + 10, yPos, contentWidth - 15, {
+              lineHeight: 4,
+              baseFontSize: 10,
+              superscriptFontSize: 7.5,
+              superscriptRise: 1.6,
+            })
+            yPos += optionBlock.height + 1
           }
         }
 
@@ -772,19 +938,23 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
 
       doc.setFont("helvetica", "normal")
       const qTextX = margin + 10
-      const qText = normalizeScientificText(question.text || "")
-      const qLines = doc.splitTextToSize(qText, contentWidth - 20)
-      doc.text(qLines, qTextX, yPos)
+      const marksLabel = question.marks ? `[${question.marks} marks]` : ""
+      const questionBlock = drawScientificText(doc, question.text || "", qTextX, yPos, contentWidth - 20 - (marksLabel ? 18 : 0), {
+        lineHeight: 5,
+        baseFontSize: 10,
+        superscriptFontSize: 7.5,
+        superscriptRise: 1.6,
+      })
 
       if (question.marks) {
         doc.setFontSize(8)
         doc.setTextColor(100, 100, 100)
-        doc.text(`[${question.marks} marks]`, pageWidth - margin - 15, yPos)
+        doc.text(marksLabel, pageWidth - margin, yPos, { align: "right" })
         doc.setTextColor(0, 0, 0)
         doc.setFontSize(10)
       }
 
-      yPos += qLines.length * 5 + 2
+      yPos += questionBlock.height + 2
 
       if (question.options && question.options.length > 0) {
         const optionLabels = ["a", "b", "c", "d", "e", "f"]
@@ -793,10 +963,14 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
             doc.addPage()
             yPos = 15
           }
-          const optText = `${optionLabels[j]}) ${normalizeScientificText(question.options[j] || "")}`
-          const optLines = doc.splitTextToSize(optText, contentWidth - 15)
-          doc.text(optLines, margin + 10, yPos)
-          yPos += optLines.length * 4 + 1
+          const optText = `${optionLabels[j]}) ${question.options[j] || ""}`
+          const optionBlock = drawScientificText(doc, optText, margin + 10, yPos, contentWidth - 15, {
+            lineHeight: 4,
+            baseFontSize: 10,
+            superscriptFontSize: 7.5,
+            superscriptRise: 1.6,
+          })
+          yPos += optionBlock.height + 1
         }
       }
 
@@ -829,9 +1003,9 @@ export function generateAssessmentPDF(assessment: Assessment, teacherName: strin
           yPos = 15
         }
 
-        const answerText = normalizeScientificText(question.answer || "N/A")
+        const answerText = normalizeScientificTextForPdf(question.answer || "N/A")
         const orAnswerText = question.orAnswer
-          ? normalizeScientificText(`OR: ${question.orAnswer}`)
+          ? normalizeScientificTextForPdf(`OR: ${question.orAnswer}`)
           : ""
 
         doc.setFont("helvetica", "bold")

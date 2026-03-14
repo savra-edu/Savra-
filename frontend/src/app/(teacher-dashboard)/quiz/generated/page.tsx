@@ -2,6 +2,7 @@
 
 import { Suspense, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
+import { useGeneration } from "@/contexts/generation-context"
 import { GeneratedHeader } from "@/features/teacher/quiz/components/generated-header"
 import GeneratedQuiz from "@/features/teacher/quiz/components/generated-quiz"
 import { queryKeys, useApiQuery } from "@/hooks/use-query"
@@ -54,6 +55,7 @@ interface TransformedQuestion {
 function GeneratedQuizPageContent() {
     const searchParams = useSearchParams()
     const quizId = searchParams.get("id")
+    const { activeJob } = useGeneration()
 
     // Fetch quiz info
     const quizQuery = useApiQuery<Quiz>({
@@ -69,8 +71,8 @@ function GeneratedQuizPageContent() {
         enabled: !!quizId,
     })
 
-    const { data: quiz, isLoading: quizLoading } = quizQuery
-    const { data: questionsData, isLoading: questionsLoading } = questionsQuery
+    const { data: quiz, isLoading: quizLoading, isFetching: quizFetching } = quizQuery
+    const { data: questionsData, isLoading: questionsLoading, isFetching: questionsFetching } = questionsQuery
 
     // Transform questions to expected format
     const transformedQuestions: TransformedQuestion[] = useMemo(() => {
@@ -101,6 +103,14 @@ function GeneratedQuizPageContent() {
 
     const isLoading = quizLoading || questionsLoading
     const error = quizQuery.error ?? questionsQuery.error
+    const isCurrentCompletedQuizJob =
+        activeJob?.artifactType === "quiz" &&
+        activeJob.artifactId === quizId &&
+        activeJob.status === "completed"
+    const isAwaitingCompletedQuizContent =
+        isCurrentCompletedQuizJob &&
+        transformedQuestions.length === 0 &&
+        (isLoading || quizFetching || questionsFetching)
 
     const refetch = async () => {
         await Promise.all([quizQuery.refetch(), questionsQuery.refetch()])
@@ -123,6 +133,19 @@ function GeneratedQuizPageContent() {
                     <div className="text-center">
                         <div className="w-12 h-12 border-4 border-[#DF6647] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-gray-600">Loading quiz...</p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    if (isAwaitingCompletedQuizContent) {
+        return (
+            <div className="flex flex-col h-full p-4 lg:p-8">
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-[#DF6647] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-600">Opening generated quiz...</p>
                     </div>
                 </div>
             </div>

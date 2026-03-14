@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { fetchApiData, queryKeys, useAppQueryClient } from '@/hooks/use-query';
 import type { GenerationArtifactType, GenerationJob } from '@/types/api';
 import { isGenerationJobActive } from '@/lib/generation-jobs';
 
@@ -77,11 +78,13 @@ function writeStoredState(userId: string, state: StoredGenerationState | null) {
 
 export function GenerationProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const queryClient = useAppQueryClient();
   const [activeJob, setActiveJob] = useState<GenerationJob | null>(null);
   const [metadata, setMetadata] = useState<GenerationTrackingMetadata | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const activeJobIdRef = useRef<string | null>(null);
+  const prefetchedCompletedJobIdRef = useRef<string | null>(null);
 
   const clearLocalState = useCallback(() => {
     setActiveJob(null);
@@ -181,9 +184,59 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     setIsPanelOpen(false);
   }, []);
 
+  const prefetchCompletedArtifact = useCallback(
+    async (job: GenerationJob) => {
+      switch (job.artifactType) {
+        case 'lesson':
+          await queryClient.prefetchQuery({
+            queryKey: queryKeys.lesson(job.artifactId),
+            queryFn: () => fetchApiData(`/lessons/${job.artifactId}`),
+          });
+          return;
+        case 'assessment':
+          await queryClient.prefetchQuery({
+            queryKey: queryKeys.assessment(job.artifactId),
+            queryFn: () => fetchApiData(`/assessments/${job.artifactId}`),
+          });
+          return;
+        case 'quiz':
+          await Promise.all([
+            queryClient.prefetchQuery({
+              queryKey: queryKeys.quiz(job.artifactId),
+              queryFn: () => fetchApiData(`/quizzes/${job.artifactId}`),
+            }),
+            queryClient.prefetchQuery({
+              queryKey: queryKeys.quizQuestions(job.artifactId),
+              queryFn: () => fetchApiData(`/quizzes/${job.artifactId}/questions`),
+            }),
+          ]);
+          return;
+        default:
+          return;
+      }
+    },
+    [queryClient]
+  );
+
   useEffect(() => {
     activeJobIdRef.current = activeJob?.id ?? null;
   }, [activeJob?.id]);
+
+  useEffect(() => {
+    if (!activeJob || activeJob.status !== 'completed') {
+      return;
+    }
+
+    if (prefetchedCompletedJobIdRef.current === activeJob.id) {
+      return;
+    }
+
+    prefetchedCompletedJobIdRef.current = activeJob.id;
+
+    void prefetchCompletedArtifact(activeJob).catch(() => {
+      prefetchedCompletedJobIdRef.current = null;
+    });
+  }, [activeJob, prefetchCompletedArtifact]);
 
   useEffect(() => {
     if (isLoading) return;

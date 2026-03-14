@@ -91,7 +91,7 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
   const [linkCopied, setLinkCopied] = useState(false)
 
   // Fetch assessment data from API
-  const { data: assessment, isLoading, refetch } = useApiQuery<Assessment>({
+  const { data: assessment, isLoading, isFetching, refetch } = useApiQuery<Assessment>({
     queryKey: queryKeys.assessment(assessmentId ?? "missing"),
     endpoint: `/assessments/${assessmentId}`,
     enabled: !!assessmentId,
@@ -103,6 +103,8 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
     activeJob?.artifactType === "assessment" && activeJob.artifactId === assessmentId
   const isCurrentAssessmentGenerating =
     isCurrentAssessmentJob && (activeJob.status === "queued" || activeJob.status === "running")
+  const isCurrentAssessmentCompleted =
+    isCurrentAssessmentJob && activeJob.status === "completed"
 
   const handleModifyPrompt = () => {
     router.push(`/assessments/create/modify?id=${assessmentId}`)
@@ -224,6 +226,10 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
         questionPaper.sections?.some((section) => section.questions.length > 0)
       )
   )
+  const isAwaitingCompletedQuestionPaper =
+    isCurrentAssessmentCompleted &&
+    !hasQuestionPaperContent &&
+    (isLoading || isFetching)
   const questions = questionPaper?.questions ||
     questionPaper?.sections?.flatMap(s => s.questions) ||
     []
@@ -260,6 +266,17 @@ function QuestionPaperContentInner({ onEditClick, isEditMode = false }: Question
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-10 h-10 border-4 border-[#DF6647] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (isAwaitingCompletedQuestionPaper) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-[#DF6647] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Opening generated question paper...</p>
+        </div>
       </div>
     )
   }
