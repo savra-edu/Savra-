@@ -296,6 +296,7 @@ model Lesson {
   endDate          DateTime?    @map("end_date")
   topic            String?      @db.Text
   numberOfPeriods  Int?         @map("number_of_periods")
+  hiddenColumns    Json?        @map("hidden_columns")
   shareToken       String?      @unique @map("share_token")
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")

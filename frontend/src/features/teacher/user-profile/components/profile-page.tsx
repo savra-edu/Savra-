@@ -138,6 +138,18 @@ function UserProfileContent() {
     }
   }
 
+  // Close Subjects/Classes dropdowns when clicking outside
+  useEffect(() => {
+    if (!showSubjectDropdown && !showClassDropdown) return
+    const handleClickOutside = (e: MouseEvent) => {
+      const el = e.target as Element
+      if (!el.closest?.('[data-profile-dropdown="subject"]')) setShowSubjectDropdown(false)
+      if (!el.closest?.('[data-profile-dropdown="class"]')) setShowClassDropdown(false)
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [showSubjectDropdown, showClassDropdown])
+
   const handleSave = async () => {
     setSaveSuccess(false)
     setSaveError(null)
@@ -446,7 +458,7 @@ function UserProfileContent() {
             {/* Subjects Field */}
             <div>
               <label className="block text-sm font-medium text-[#242220] mb-2">Subjects</label>
-              <div className="relative mb-3">
+              <div className="relative mb-3" data-profile-dropdown="subject">
                 <button
                   onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
                   className="w-full border border-[#AB79DA] rounded-lg px-4 py-3 text-left text-gray-600 flex items-center justify-between text-sm"
@@ -490,7 +502,7 @@ function UserProfileContent() {
             {/* Classes Field */}
             <div>
               <label className="block text-sm font-medium text-[#242220] mb-2">Classes</label>
-              <div className="relative mb-3">
+              <div className="relative mb-3" data-profile-dropdown="class">
                 <button
                   onClick={() => setShowClassDropdown(!showClassDropdown)}
                   className="w-full border border-[#AB79DA] rounded-lg px-4 py-3 text-left text-gray-600 flex items-center justify-between text-sm"
@@ -594,7 +606,7 @@ function UserProfileContent() {
                 <label className="block text-sm font-normal text-[#6A6A6A] mb-2">Subjects</label>
 
                 {/* Dropdown Button */}
-                <div className="relative mb-4">
+                <div className="relative mb-4" data-profile-dropdown="subject">
                   <button
                     onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
                     className="w-full border border-[#7D5CB0] rounded-lg px-4 py-3 text-left text-gray-600 flex items-center justify-between text-sm"
@@ -644,7 +656,7 @@ function UserProfileContent() {
                 <label className="block text-sm font-normal text-[#6A6A6A] mb-2">Classes</label>
 
                 {/* Dropdown Button */}
-                <div className="relative mb-4">
+                <div className="relative mb-4" data-profile-dropdown="class">
                   <button
                     onClick={() => setShowClassDropdown(!showClassDropdown)}
                     className="w-full border border-[#7D5CB0] rounded-lg px-4 py-3 text-left text-gray-600 flex items-center justify-between text-sm"

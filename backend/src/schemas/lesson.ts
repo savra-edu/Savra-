@@ -1,17 +1,32 @@
 import { z } from 'zod';
 
-// Period entry schema
+// Period entry schema (nullable so cleared/hidden column values from frontend are accepted)
 export const periodEntrySchema = z.object({
   periodNo: z.number().int().min(1),
-  concept: z.string().optional(),
-  learningOutcomes: z.string().optional(),
-  teacherLearningProcess: z.string().optional(),
-  assessment: z.string().optional(),
-  resources: z.string().optional(),
-  centurySkillsValueEducation: z.string().optional(),
-  realLifeApplication: z.string().optional(),
-  reflection: z.string().optional(),
+  concept: z.string().optional().nullable(),
+  learningOutcomes: z.string().optional().nullable(),
+  teacherLearningProcess: z.string().optional().nullable(),
+  assessment: z.string().optional().nullable(),
+  resources: z.string().optional().nullable(),
+  centurySkillsValueEducation: z.string().optional().nullable(),
+  realLifeApplication: z.string().optional().nullable(),
+  reflection: z.string().optional().nullable(),
 });
+
+// Allowed keys for hiddenColumns (content columns only; periodNo is never hideable)
+export const PERIOD_CONTENT_KEYS = [
+  'concept', 'learningOutcomes', 'teacherLearningProcess', 'assessment',
+  'resources', 'centurySkillsValueEducation', 'realLifeApplication', 'reflection',
+] as const;
+
+const hiddenColumnsSchema = z
+  .array(
+    z.enum([
+      'concept', 'learningOutcomes', 'teacherLearningProcess', 'assessment',
+      'resources', 'centurySkillsValueEducation', 'realLifeApplication', 'reflection',
+    ])
+  )
+  .optional();
 
 // Create lesson schema
 export const createLessonSchema = z.object({
@@ -42,6 +57,7 @@ export const updateLessonSchema = z.object({
   endDate: z.string().datetime().optional().nullable(),
   topic: z.string().min(1).optional().nullable(),
   numberOfPeriods: z.number().int().min(1).optional().nullable(),
+  hiddenColumns: hiddenColumnsSchema,
   periods: z.array(periodEntrySchema).optional(),
 });
 

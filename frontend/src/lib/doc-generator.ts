@@ -3,7 +3,7 @@
  * Word opens HTML files with .doc extension.
  */
 
-import { Lesson, Quiz } from "@/types/api"
+import { Lesson, LessonPeriod, Quiz } from "@/types/api"
 import { normalizeScientificText } from "./scientific-text"
 
 function escapeHtml(text: string): string {
@@ -32,23 +32,31 @@ function triggerDownload(html: string, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 
+const PERIOD_DOC_COLUMNS = [
+  { key: "periodNo" as const, width: "6%", header: "Period<br/>No" },
+  { key: "concept" as const, width: "12%", header: "Concept" },
+  { key: "learningOutcomes" as const, width: "13%", header: "Learning<br/>Outcomes<br/>(Competency<br/>Based)" },
+  { key: "teacherLearningProcess" as const, width: "14%", header: "Teacher-<br/>Learning<br/>Process" },
+  { key: "assessment" as const, width: "11%", header: "Assessment" },
+  { key: "resources" as const, width: "10%", header: "Resources" },
+  { key: "centurySkillsValueEducation" as const, width: "13%", header: "21st<br/>Century<br/>Skills/Value<br/>Education" },
+  { key: "realLifeApplication" as const, width: "11%", header: "Real<br/>Life<br/>Application" },
+  { key: "reflection" as const, width: "10%", header: "Reflection" },
+]
+
+function getPeriodCellValue(p: LessonPeriod, key: string): string {
+  if (key === "periodNo") return String(p.periodNo)
+  const value = (p as unknown as Record<string, string | undefined>)[key]
+  return escapeHtml(value ?? "")
+}
+
 export function downloadLessonPlanDoc(lesson: Lesson, teacherName: string): void {
   const subject = lesson.subject?.name || "Subject"
   const grade = lesson.class?.grade || ""
   const topic = lesson.topic || "-"
   const periods = lesson.periods || []
-
-  const columns = [
-    { width: "6%", header: "Period<br/>No" },
-    { width: "12%", header: "Concept" },
-    { width: "13%", header: "Learning<br/>Outcomes<br/>(Competency<br/>Based)" },
-    { width: "14%", header: "Teacher-<br/>Learning<br/>Process" },
-    { width: "11%", header: "Assessment" },
-    { width: "10%", header: "Resources" },
-    { width: "13%", header: "21st<br/>Century<br/>Skills/Value<br/>Education" },
-    { width: "11%", header: "Real<br/>Life<br/>Application" },
-    { width: "10%", header: "Reflection" },
-  ]
+  const hiddenSet = new Set(Array.isArray(lesson.hiddenColumns) ? lesson.hiddenColumns : [])
+  const columns = PERIOD_DOC_COLUMNS.filter((c) => c.key === "periodNo" || !hiddenSet.has(c.key))
 
   let periodsHtml = ""
   if (periods.length > 0) {
@@ -59,15 +67,7 @@ export function downloadLessonPlanDoc(lesson: Lesson, teacherName: string): void
     const rows = periods
       .map(
         (p) => `<tr>
-          <td style="text-align:center">${p.periodNo}</td>
-          <td>${escapeHtml(p.concept || "")}</td>
-          <td>${escapeHtml(p.learningOutcomes || "")}</td>
-          <td>${escapeHtml(p.teacherLearningProcess || "")}</td>
-          <td>${escapeHtml(p.assessment || "")}</td>
-          <td>${escapeHtml(p.resources || "")}</td>
-          <td>${escapeHtml(p.centurySkillsValueEducation || "")}</td>
-          <td>${escapeHtml(p.realLifeApplication || "")}</td>
-          <td>${escapeHtml(p.reflection || "")}</td>
+          ${columns.map((c) => (c.key === "periodNo" ? `<td style="text-align:center">${p.periodNo}</td>` : `<td>${getPeriodCellValue(p, c.key)}</td>`)).join("")}
         </tr>`
       )
       .join("")

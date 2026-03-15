@@ -140,6 +140,7 @@ export interface Lesson {
   endDate?: string;
   topic?: string;
   numberOfPeriods?: number;
+  hiddenColumns?: string[];
   createdAt: string;
   updatedAt: string;
   class?: Class;
