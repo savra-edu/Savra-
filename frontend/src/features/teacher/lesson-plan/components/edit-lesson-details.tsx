@@ -6,12 +6,14 @@ import { ChevronDown, ChevronUp, Share2, Printer, Check } from "lucide-react"
 import { api } from "@/lib/api"
 import { queryKeys, useApiQuery } from "@/hooks/use-query"
 import { useAuth } from "@/contexts/auth-context"
+import { useGeneration } from "@/contexts/generation-context"
 import { Lesson, LessonPeriod } from "@/types/api"
 import { generateLessonPlanPDF } from "@/lib/pdf-generator"
 import { downloadLessonPlanDoc } from "@/lib/doc-generator"
 import { DownloadDropdown } from "@/components/download-dropdown"
 import { getAppBaseUrl } from "@/lib/app-url"
 import { PeriodTable } from "./period-table"
+import { getGenerationStageLabel, normalizeGenerationProgress } from "@/lib/generation-jobs"
 
 interface EditLessonDetailsProps {
   isEditMode?: boolean
@@ -24,6 +26,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
   const searchParams = useSearchParams()
   const lessonId = searchParams.get("id")
   const { user } = useAuth()
+  const { activeJob } = useGeneration()
   
   // Fetch lesson data if lessonId is provided
   const { data: fetchedLesson, isLoading: isLoadingLesson, refetch: refetchLesson } = useApiQuery<Lesson>({
@@ -48,6 +51,9 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
   const [numberOfPeriods, setNumberOfPeriods] = useState<number>(1)
   const [periods, setPeriods] = useState<LessonPeriod[]>([])
   const [linkCopied, setLinkCopied] = useState(false)
+  const isCurrentLessonJob = activeJob?.artifactType === "lesson" && activeJob.artifactId === lessonId
+  const isCurrentLessonGenerating =
+    isCurrentLessonJob && (activeJob.status === "queued" || activeJob.status === "running")
 
   // Initialize state from lesson data
   useEffect(() => {
@@ -90,6 +96,12 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
       return currentPeriods
     })
   }, [lesson?.periods, lessonId, numberOfPeriods])
+
+  useEffect(() => {
+    if (activeJob?.status === "completed" && isCurrentLessonJob) {
+      void (onSave ? onSave() : refetchLesson())
+    }
+  }, [activeJob?.status, isCurrentLessonJob, onSave, refetchLesson])
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({
@@ -249,6 +261,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
   const lessonContent = lesson?.content || ""
   const lessonTitle = lesson?.title || "Generated Lesson Plan"
   const lessonDuration = lesson?.duration ? `${lesson.duration} mins` : "45 mins"
+  const hasRenderableLessonContent = periods.length > 0 || Boolean(lessonContent)
 
   // Simple markdown to HTML converter
   const formatContent = (content: string): string => {
@@ -363,6 +376,26 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
                   </div>
                 )}
               </div>
+            ) : isCurrentLessonGenerating && activeJob ? (
+              <div className="mx-auto max-w-xl rounded-2xl border border-[#E8E2F0] bg-[#F8F5FC] p-6 text-center">
+                <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-[#D9C6FF] border-t-[#9B61FF] animate-spin" />
+                <h3 className="text-lg font-semibold text-[#242220]">Your lesson plan is on the way</h3>
+                <p className="mt-2 text-sm leading-6 text-[#6A6A6A]">
+                  You can keep browsing the app and open the floating button whenever you want to check progress.
+                </p>
+                <div className="mt-5 text-left">
+                  <div className="mb-2 flex items-center justify-between text-sm font-medium text-[#353535]">
+                    <span>{getGenerationStageLabel(activeJob.stage)}</span>
+                    <span>{normalizeGenerationProgress(activeJob)}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#E8E2F0]">
+                    <div
+                      className="h-full rounded-full bg-[#9B61FF] transition-[width] duration-500"
+                      style={{ width: `${normalizeGenerationProgress(activeJob)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
             ) : (
               <p className="text-gray-500 text-center py-8">No lesson plan content yet. Generate content first.</p>
             )}
@@ -371,6 +404,12 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
 
         {/* Footer Actions */}
         <div className="shrink-0 px-4 lg:px-12 py-4 lg:py-6 border-t border-gray-200">
+          {!hasRenderableLessonContent && isCurrentLessonGenerating ? (
+            <p className="text-sm text-[#6A6A6A]">
+              Footer actions will unlock automatically after the lesson plan finishes generating.
+            </p>
+          ) : (
+          <>
           {/* Mobile: Stack buttons */}
           <div className="lg:hidden flex flex-col gap-4">
             {/* First Row: Print, Share */}
@@ -445,6 +484,8 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
               </button>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

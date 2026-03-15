@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { startKeepAliveCron } from './lib/cron';
+import { initializeGenerationJobs } from './lib/generation-jobs';
 
 // Start database keepalive cron job (runs every N minutes from KEEPALIVE_INTERVAL_MINUTES)
 // This keeps both Neon DB and Render backend active
@@ -63,9 +64,11 @@ app.use(notFoundHandler);
 // Global error handler
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
+async function startServer() {
+  await initializeGenerationJobs();
+
+  app.listen(PORT, () => {
+    console.log(`
 ========================================
   Savra AI Backend Server
 ========================================
@@ -76,6 +79,12 @@ app.listen(PORT, () => {
   Health: http://localhost:${PORT}/api/health
 ========================================
   `);
+  });
+}
+
+void startServer().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
 
 export default app;

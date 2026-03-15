@@ -3,12 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { QuizObjectiveSection } from "@/features/teacher/quiz/components/objective-section"
-import { GeneratingOverlay } from "@/components/generating-overlay"
 import { Button } from "@/components/ui/button"
 import { Upload } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { useChapters } from "@/hooks/use-chapters"
+import { useGeneration } from "@/contexts/generation-context"
+import type { GenerationJob } from "@/types/api"
 
 interface Chapter {
     id: string
@@ -29,6 +30,7 @@ interface QuizContentProps {
 
 export default function QuizContent({ selectedClassId, selectedSubjectId, selectedGrade }: QuizContentProps) {
     const router = useRouter()
+    const { trackJob } = useGeneration()
 
     // Chapters - load based on subject + grade (grade-specific CBSE/NCERT chapters)
     const { data: chaptersData, isLoading: chaptersLoading } = useChapters(selectedSubjectId || undefined, selectedGrade ?? undefined)
@@ -124,10 +126,22 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
             const response = await api.post<{ success: boolean; data: Quiz }>("/quizzes", quizData)
             const quiz = response.data
 
-            // Generate questions
-            await api.post(`/quizzes/${quiz.id}/generate`, {})
+            const generationResponse = await api.post<{
+                success: boolean
+                data: {
+                    quizId: string
+                    job: GenerationJob
+                }
+            }>(`/quizzes/${quiz.id}/generate`, {})
 
-            // Navigate to generated quiz page with ID
+            trackJob(generationResponse.data.job, {
+                artifactType: "quiz",
+                artifactId: quiz.id,
+                targetPath: `/quiz/generated?id=${quiz.id}`,
+                label: quiz.title || "Quiz",
+            })
+
+            // Navigate immediately; generation continues safely in the background.
             router.push(`/quiz/generated?id=${quiz.id}`)
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to generate quiz")
@@ -138,7 +152,6 @@ export default function QuizContent({ selectedClassId, selectedSubjectId, select
 
     return (
         <div className="flex flex-col h-full relative">
-            {isLoading && <GeneratingOverlay type="quiz" onCancel={() => setIsLoading(false)} />}
             {/* Scrollable Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
                 {/* Chapters Section */}

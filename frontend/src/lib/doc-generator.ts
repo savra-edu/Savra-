@@ -262,16 +262,28 @@ interface AssessmentForDoc {
       title?: string
       name?: string
       instructions?: string
-      questions: Array<{ number?: number; text: string; options?: string[]; marks?: number; answer?: string }>
+      marksInfo?: string
+      questions: Array<{ number?: number; text: string; options?: string[]; marks?: number; answer?: string; type?: string; orText?: string; orAnswer?: string }>
     }>
-    questions?: Array<{ number?: number; text: string; options?: string[]; marks?: number; answer?: string }>
+    questions?: Array<{ number?: number; text: string; options?: string[]; marks?: number; answer?: string; type?: string; orText?: string; orAnswer?: string }>
   } | null
 }
 
 export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName: string, includeAnswerKey = false): void {
   const subject = assessment.subject?.name || "QuestionPaper"
   const grade = assessment.class ? `${assessment.class.grade}-${assessment.class.section}` : ""
+  const gradeNumber = assessment.class?.grade
   const chapter = assessment.chapters?.map((c) => c.name).join(", ") || ""
+  const isMathSubject = ["mathematics", "maths"].includes(subject.trim().toLowerCase())
+  const isCbseMathPaper = isMathSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isPhysicsSubject = subject.trim().toLowerCase() === "physics"
+  const isCbsePhysicsPaper = isPhysicsSubject && (gradeNumber === 11 || gradeNumber === 12)
+  const isStructuredCbsePaper = isCbseMathPaper || isCbsePhysicsPaper
+  const timeLabel = isCbsePhysicsPaper
+    ? ((assessment.totalMarks ?? 0) >= 70 ? "3 Hours" : (assessment.totalMarks ?? 0) >= 40 ? "2 Hours" : "1 Hour")
+    : isCbseMathPaper
+      ? ((assessment.totalMarks ?? 0) >= 80 ? "3 Hours" : (assessment.totalMarks ?? 0) >= 40 ? "2 Hours" : "1 Hour")
+      : "60 mins"
   const qp = assessment.questionPaper
   const instructions = qp?.instructions || [
     "All questions are compulsory.",
@@ -281,7 +293,71 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
   const flatQuestions = qp?.questions || (sections ? sections.flatMap((s) => s.questions || []) : [])
 
   let questionsHtml = ""
-  if (sections && sections.length > 0) {
+  if (isStructuredCbsePaper && sections && sections.length > 0) {
+    questionsHtml = sections
+      .map((sec, si) => {
+        let arDirectionShown = false
+        const questionsBlock = (sec.questions || [])
+          .map((q, i) => {
+            const isAssertionReasoning = q.type === "assertion_reasoning"
+            const directionHtml =
+              isAssertionReasoning && !arDirectionShown
+                ? (() => {
+                    arDirectionShown = true
+                    return `
+        <div style="margin:8pt 0 10pt 0;">
+          <p style="margin:0 0 4pt 0; text-align:center; font-weight:bold;">Assertion - Reason Based Questions</p>
+          <p style="margin:0 0 4pt 0;"><strong>Direction :</strong> Two statements are given, one labelled Assertion (A) and one labelled Reason (R). Select the correct answer from the options (A), (B), (C) and (D) as given below.</p>
+          <p style="margin:0 0 2pt 12pt;">(A) Both Assertion (A) and Reason (R) are true and the Reason (R) is the correct explanation of the Assertion (A).</p>
+          <p style="margin:0 0 2pt 12pt;">(B) Both Assertion (A) and Reason (R) are true, but Reason (R) is not the correct explanation of the Assertion (A).</p>
+          <p style="margin:0 0 2pt 12pt;">(C) Assertion (A) is true, but Reason (R) is false.</p>
+          <p style="margin:0 0 2pt 12pt;">(D) Assertion (A) is false, but Reason (R) is true.</p>
+        </div>`
+                  })()
+                : ""
+
+            const optionsHtml = (q.options || [])
+              .map((o, j) => `<p style="margin:3pt 0 0 20pt;">(${String.fromCharCode(65 + j)}) ${escapeHtml(normalizeScientificText(o))}</p>`)
+              .join("")
+
+            const orHtml = q.orText
+              ? `<p style="margin:8pt 0 4pt 0; text-align:center; font-weight:bold;">OR</p><p style="margin:0 0 0 20pt;">${escapeHtml(normalizeScientificText(q.orText))}</p>`
+              : ""
+
+            return `
+        ${directionHtml}
+        <div style="margin-bottom:12pt;">
+          <table style="width:100%; border-collapse:collapse;">
+            <tr>
+              <td style="width:85%; vertical-align:top;">
+                <p style="margin:0;"><strong>${q.number ?? i + 1}.</strong> ${escapeHtml(normalizeScientificText(q.text))}</p>
+                ${optionsHtml}
+                ${orHtml}
+              </td>
+              <td style="width:15%; vertical-align:top; text-align:right; color:#666; font-size:9pt;">
+                ${q.marks != null ? `[${q.marks} mark${q.marks > 1 ? "s" : ""}]` : ""}
+              </td>
+            </tr>
+          </table>
+        </div>`
+          })
+          .join("")
+
+        return `
+      <div style="margin:12pt 0 16pt 0;">
+        <table style="width:100%; border-collapse:collapse;">
+          <tr>
+            <td style="width:80%; text-align:center; font-weight:bold; font-size:13pt;">${escapeHtml(sec.title || sec.name || `Section ${String.fromCharCode(65 + si)}`)}</td>
+            <td style="width:20%; text-align:right; font-weight:bold; font-size:11pt;">${escapeHtml(sec.marksInfo || "")}</td>
+          </tr>
+        </table>
+        ${sec.instructions ? `<p style="margin:3pt 0 8pt 0; font-weight:600;">${escapeHtml(sec.instructions)}</p>` : ""}
+        ${questionsBlock}
+      </div>
+    `
+      })
+      .join("")
+  } else if (sections && sections.length > 0) {
     questionsHtml = sections
       .map(
         (sec, si) => `
@@ -318,7 +394,7 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
       const answerItems = allQuestions
         .map(
           (q, i) =>
-            `<p><strong>Q${q.number ?? i + 1}.</strong> ${escapeHtml(normalizeScientificText(q.answer || "N/A"))}</p>`
+            `<p><strong>Q${q.number ?? i + 1}.</strong> ${escapeHtml(normalizeScientificText(q.answer || "N/A"))}${q.orAnswer ? `<br/><span style="margin-left:16px;"><strong>OR:</strong> ${escapeHtml(normalizeScientificText(q.orAnswer))}</span>` : ""}</p>`
         )
         .join("")
       answerKeyHtml = `<hr/><h3>Answer Key</h3>${answerItems}`
@@ -328,7 +404,7 @@ export function downloadAssessmentDoc(assessment: AssessmentForDoc, _teacherName
   const html = `
     <h2>SAVRA - Question Paper</h2>
     <p><strong>Subject:</strong> ${escapeHtml(subject)} | <strong>Class:</strong> ${grade} | <strong>Chapter:</strong> ${escapeHtml(chapter)}</p>
-    <p><strong>Maximum Marks:</strong> ${assessment.totalMarks ?? 100} | <strong>Time:</strong> 60 mins</p>
+    <p><strong>Maximum Marks:</strong> ${assessment.totalMarks ?? 100} | <strong>Time:</strong> ${timeLabel}</p>
     <h3>General Instructions</h3>
     <ol>${instructions.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ol>
     <hr/>

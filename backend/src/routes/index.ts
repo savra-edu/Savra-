@@ -15,6 +15,7 @@ import studentRoutes from './student';
 import adminRoutes from './admin';
 import teacherRoutes from './teacher';
 import aiRoutes from './ai';
+import generationJobRoutes from './generation-jobs';
 
 const router = Router();
 
@@ -46,5 +47,6 @@ router.use('/student', studentRoutes);
 router.use('/admin', adminRoutes);
 router.use('/teacher', teacherRoutes);
 router.use('/ai', aiRoutes);
+router.use('/generation-jobs', generationJobRoutes);
 
 export default router;
