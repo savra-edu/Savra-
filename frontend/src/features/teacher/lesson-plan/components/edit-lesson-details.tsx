@@ -50,6 +50,7 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
   const [topic, setTopic] = useState<string>("")
   const [numberOfPeriods, setNumberOfPeriods] = useState<number>(1)
   const [periods, setPeriods] = useState<LessonPeriod[]>([])
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [linkCopied, setLinkCopied] = useState(false)
   const isCurrentLessonJob = activeJob?.artifactType === "lesson" && activeJob.artifactId === lessonId
   const isCurrentLessonGenerating =
@@ -62,8 +63,8 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
       setEndDate(lesson.endDate || null)
       setTopic(lesson.topic || "")
       setNumberOfPeriods(lesson.numberOfPeriods || 1)
-      const lessonPeriods = lesson.periods || []
-      setPeriods(lessonPeriods)
+      setPeriods(lesson.periods || [])
+      setHiddenColumns(Array.isArray(lesson.hiddenColumns) ? lesson.hiddenColumns : [])
     }
   }, [lesson])
 
@@ -125,50 +126,23 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
       const startDateISO = startDate ? new Date(startDate).toISOString() : null
       const endDateISO = endDate ? new Date(endDate).toISOString() : null
 
-      // Use local periods state if available, otherwise fall back to lesson.periods
-      // This handles the race condition where periods state hasn't been updated yet
       const effectivePeriods = periods.length > 0 ? periods : (lesson?.periods || [])
+      const periodsData = buildPeriodsPayload(effectivePeriods)
 
-      // Prepare periods data - ensure we have valid data with content
-      const periodsData = effectivePeriods
-        .filter(p => {
-          // Only include periods that have at least some content
-          return p.periodNo && (
-            p.concept ||
-            p.learningOutcomes ||
-            p.teacherLearningProcess ||
-            p.assessment ||
-            p.resources ||
-            p.centurySkillsValueEducation ||
-            p.realLifeApplication ||
-            p.reflection
-          )
-        })
-        .map(p => ({
-          periodNo: p.periodNo,
-          concept: p.concept || null,
-          learningOutcomes: p.learningOutcomes || null,
-          teacherLearningProcess: p.teacherLearningProcess || null,
-          assessment: p.assessment || null,
-          resources: p.resources || null,
-          centurySkillsValueEducation: p.centurySkillsValueEducation || null,
-          realLifeApplication: p.realLifeApplication || null,
-          reflection: p.reflection || null,
-        }))
-
-      if (periodsData.length === 0) {
+      if (!periodsData || periodsData.length === 0) {
         console.error('WARNING: No periods with content to save!')
         setSaveError('No periods with content found. Please ensure your lesson plan has been generated.')
         setIsSaving(false)
         return
       }
 
-      // Update lesson with all fields
+      // Update lesson with all fields (including hidden columns so removal is persisted)
       await api.put(`/lessons/${lessonId}`, {
         startDate: startDateISO,
         endDate: endDateISO,
         topic,
         numberOfPeriods,
+        hiddenColumns,
         periods: periodsData,
       })
 
@@ -200,8 +174,47 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
     endDate: endDate || undefined,
     topic: topic || undefined,
     numberOfPeriods: numberOfPeriods || undefined,
+    hiddenColumns: hiddenColumns.length > 0 ? hiddenColumns : undefined,
     periods: periods.length > 0 ? periods : undefined,
   })
+
+  const contentKeys = ['concept', 'learningOutcomes', 'teacherLearningProcess', 'assessment', 'resources', 'centurySkillsValueEducation', 'realLifeApplication', 'reflection']
+
+  function buildPeriodsPayload(periodsList: LessonPeriod[]) {
+    const filtered = periodsList.filter(
+      (p) =>
+        p.periodNo &&
+        (p.concept ||
+          p.learningOutcomes ||
+          p.teacherLearningProcess ||
+          p.assessment ||
+          p.resources ||
+          p.centurySkillsValueEducation ||
+          p.realLifeApplication ||
+          p.reflection)
+    )
+    if (filtered.length === 0) return null
+    return filtered.map((p) => ({
+      periodNo: p.periodNo,
+      concept: p.concept || null,
+      learningOutcomes: p.learningOutcomes || null,
+      teacherLearningProcess: p.teacherLearningProcess || null,
+      assessment: p.assessment || null,
+      resources: p.resources || null,
+      centurySkillsValueEducation: p.centurySkillsValueEducation || null,
+      realLifeApplication: p.realLifeApplication || null,
+      reflection: p.reflection || null,
+    }))
+  }
+
+  const handleRemoveColumn = (columnKey: string) => {
+    if (!contentKeys.includes(columnKey)) return
+    const newHiddenColumns = hiddenColumns.includes(columnKey) ? hiddenColumns : [...hiddenColumns, columnKey]
+    const newPeriods = periods.map((p) => ({ ...p, [columnKey]: undefined }))
+    setHiddenColumns(newHiddenColumns)
+    setPeriods(newPeriods)
+    // Persisted only when user clicks "Save Lesson Plan"
+  }
 
   const handleDownloadPDF = () => {
     if (!lesson) return
@@ -350,6 +363,8 @@ export default function EditLessonDetails({ isEditMode = false, lesson: propLess
                   periods={periods}
                   onPeriodChange={setPeriods}
                   readOnly={!isEditMode}
+                  hiddenColumnKeys={hiddenColumns}
+                  onRemoveColumn={isEditMode ? handleRemoveColumn : undefined}
                 />
               </>
             ) : lessonContent ? (

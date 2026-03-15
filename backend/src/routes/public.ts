@@ -162,6 +162,7 @@ router.get(
         objective: lesson.objective,
         topic: lesson.topic,
         numberOfPeriods: lesson.numberOfPeriods,
+        hiddenColumns: lesson.hiddenColumns as string[] | undefined,
         periods: lesson.periods,
         startDate: lesson.startDate,
         endDate: lesson.endDate,

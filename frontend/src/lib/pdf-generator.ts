@@ -27,6 +27,16 @@ function formatDateForDisplay(dateString: string | null | undefined): string {
   }
 }
 
+/** Strip NEP/NCF citation parentheses from lesson plan text for PDF display only (e.g. "(NEP 2020, 4.4, p. 5)"). */
+function stripNepNcfRefs(text: string): string {
+  if (!text || typeof text !== "string") return text
+  return text
+    .replace(/\s*\(NEP[^)]*\)/g, "")
+    .replace(/\s*\(NCF[^)]*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+}
+
 type ScientificTextToken = {
   text: string
   isSuperscript: boolean
@@ -261,41 +271,44 @@ export function generateLessonPlanPDF(lesson: Lesson, teacherName: string): { ur
       console.warn('No periods with content found, generating empty table')
     }
     
-    // Prepare table data - use all periods (including empty ones) to show structure
-    const tableData = lesson.periods.map((period) => [
-      String(period.periodNo),
-      period.concept || "",
-      period.learningOutcomes || "",
-      period.teacherLearningProcess || "",
-      period.assessment || "",
-      period.resources || "",
-      period.centurySkillsValueEducation || "",
-      period.realLifeApplication || "",
-      period.reflection || "",
-    ])
-    
-    console.log('Generating PDF with', lesson.periods.length, 'periods,', validPeriods.length, 'with content')
-
-    // Table headers with line breaks
-    const headers = [
-      "Period\nNo",
-      "Concept",
-      "Learning\nOutcomes\n(Competency\nBased)",
-      "Teacher-\nLearning\nProcess",
-      "Assessment",
-      "Resources",
-      "21st\nCentury\nSkills/Value\nEducation",
-      "Real\nLife\nApplication",
-      "Reflection",
+    // Respect hiddenColumns: only include columns not removed by the user
+    const hiddenSet = new Set(Array.isArray(lesson.hiddenColumns) ? lesson.hiddenColumns : [])
+    const periodCols = [
+      { key: "periodNo" as const, header: "Period\nNo", width: 18 },
+      { key: "concept" as const, header: "Concept", width: 32 },
+      { key: "learningOutcomes" as const, header: "Learning\nOutcomes\n(Competency\nBased)", width: 36 },
+      { key: "teacherLearningProcess" as const, header: "Teacher-\nLearning\nProcess", width: 36 },
+      { key: "assessment" as const, header: "Assessment", width: 28 },
+      { key: "resources" as const, header: "Resources", width: 28 },
+      { key: "centurySkillsValueEducation" as const, header: "21st\nCentury\nSkills/Value\nEducation", width: 36 },
+      { key: "realLifeApplication" as const, header: "Real\nLife\nApplication", width: 28 },
+      { key: "reflection" as const, header: "Reflection", width: 28 },
     ]
+    const visibleCols = periodCols.filter((c) => c.key === "periodNo" || !hiddenSet.has(c.key))
 
-    // Calculate available width: A4 landscape = 297mm, with 10mm margins on each side = 277mm
-    // Distribute column widths proportionally to fit
+    const tableData = lesson.periods.map((period) =>
+      visibleCols.map((col) =>
+        col.key === "periodNo" ? String(period.periodNo) : stripNepNcfRefs((period[col.key] as string) || "")
+      )
+    )
+    const headers = visibleCols.map((c) => c.header)
+
+    // Scale column widths to use full page width so table never overflows or looks cut off (A4 landscape - margins)
+    const TABLE_AVAILABLE_WIDTH_MM = 277
+    const totalRelativeWidth = visibleCols.reduce((sum, c) => sum + c.width, 0)
+    const columnStyles: Record<number, { cellWidth: number; halign?: "left" | "center" | "right" }> = {}
+    visibleCols.forEach((c, i) => {
+      const cellWidth = Math.round((c.width / totalRelativeWidth) * TABLE_AVAILABLE_WIDTH_MM)
+      columnStyles[i] = c.key === "periodNo" ? { cellWidth, halign: "center" } : { cellWidth }
+    })
+
+    console.log('Generating PDF with', lesson.periods.length, 'periods,', validPeriods.length, 'with content,', visibleCols.length, 'columns')
+
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: yPos,
-      margin: { left: 10, right: 10 }, // Equal small margins
+      margin: { left: 10, right: 10 },
       styles: {
         fontSize: 7,
         cellPadding: 2,
@@ -320,18 +333,7 @@ export function generateLessonPlanPDF(lesson: Lesson, teacherName: string): { ur
         valign: "top",
         fillColor: false,
       },
-      columnStyles: {
-        0: { cellWidth: 18, halign: "center" }, // Period No - reduced
-        1: { cellWidth: 32 }, // Concept - reduced
-        2: { cellWidth: 36 }, // Learning Outcomes - reduced
-        3: { cellWidth: 36 }, // Teacher-Learning Process - reduced
-        4: { cellWidth: 28 }, // Assessment - reduced
-        5: { cellWidth: 28 }, // Resources - reduced
-        6: { cellWidth: 36 }, // 21st Century Skills - reduced
-        7: { cellWidth: 28 }, // Real Life Application - reduced
-        8: { cellWidth: 28 }, // Reflection - reduced
-        // Total: 18 + 32 + 36 + 36 + 28 + 28 + 36 + 28 + 28 = 270mm (fits within 277mm with some buffer)
-      },
+      columnStyles,
       // Override styles for header cells to ensure grey background
       didParseCell: function (data: any) {
         if (data.section === 'head') {

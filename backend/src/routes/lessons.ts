@@ -12,7 +12,7 @@ import {
   generateContentSchema,
 } from '../schemas/lesson';
 import { successResponse, errorResponse, notFoundResponse, forbiddenResponse } from '../utils/response';
-import { LessonStatus } from '@prisma/client';
+import { LessonStatus, Prisma } from '@prisma/client';
 import { createGenerationJob, serializeGenerationJob } from '../lib/generation-jobs';
 
 const router = Router();
@@ -353,6 +353,7 @@ router.get(
         endDate: lesson.endDate,
         topic: lesson.topic,
         numberOfPeriods: lesson.numberOfPeriods,
+        hiddenColumns: lesson.hiddenColumns as string[] | undefined,
         periods: lesson.periods,
         createdAt: lesson.createdAt,
         updatedAt: lesson.updatedAt,
@@ -373,7 +374,7 @@ router.put(
     try {
       const userId = req.user!.id;
       const lessonId = req.params.id as string;
-      const { classId, subjectId, chapterIds, title, duration, objective, content, referenceFileUrl, startDate, endDate, topic, numberOfPeriods, periods } = req.body;
+      const { classId, subjectId, chapterIds, title, duration, objective, content, referenceFileUrl, startDate, endDate, topic, numberOfPeriods, hiddenColumns, periods } = req.body;
 
       // Get teacher ID
       const teacherId = await getTeacherId(userId);
@@ -400,6 +401,7 @@ router.put(
         endDate?: Date | null;
         topic?: string | null;
         numberOfPeriods?: number | null;
+        hiddenColumns?: unknown;
       } = {};
 
       if (classId !== undefined) updateData.classId = classId;
@@ -413,13 +415,14 @@ router.put(
       if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
       if (topic !== undefined) updateData.topic = topic;
       if (numberOfPeriods !== undefined) updateData.numberOfPeriods = numberOfPeriods;
+      if (hiddenColumns !== undefined) updateData.hiddenColumns = hiddenColumns;
 
       // Update lesson in transaction (handle chapter reassignment and periods)
       const updatedLesson = await prisma.$transaction(async (tx) => {
         // Update lesson fields
         await tx.lesson.update({
           where: { id: lessonId },
-          data: updateData,
+          data: updateData as Prisma.LessonUpdateInput,
         });
 
         // If chapterIds provided, reassign chapters
@@ -507,6 +510,7 @@ router.put(
         endDate: updatedLesson.endDate,
         topic: updatedLesson.topic,
         numberOfPeriods: updatedLesson.numberOfPeriods,
+        hiddenColumns: updatedLesson.hiddenColumns as string[] | undefined,
         periods: updatedLesson.periods,
         updatedAt: updatedLesson.updatedAt,
       });
