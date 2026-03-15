@@ -27,6 +27,16 @@ function formatDateForDisplay(dateString: string | null | undefined): string {
   }
 }
 
+/** Strip NEP/NCF citation parentheses from lesson plan text for PDF display only (e.g. "(NEP 2020, 4.4, p. 5)"). */
+function stripNepNcfRefs(text: string): string {
+  if (!text || typeof text !== "string") return text
+  return text
+    .replace(/\s*\(NEP[^)]*\)/g, "")
+    .replace(/\s*\(NCF[^)]*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+}
+
 type ScientificTextToken = {
   text: string
   isSuperscript: boolean
@@ -277,12 +287,19 @@ export function generateLessonPlanPDF(lesson: Lesson, teacherName: string): { ur
     const visibleCols = periodCols.filter((c) => c.key === "periodNo" || !hiddenSet.has(c.key))
 
     const tableData = lesson.periods.map((period) =>
-      visibleCols.map((col) => (col.key === "periodNo" ? String(period.periodNo) : (period[col.key] as string) || ""))
+      visibleCols.map((col) =>
+        col.key === "periodNo" ? String(period.periodNo) : stripNepNcfRefs((period[col.key] as string) || "")
+      )
     )
     const headers = visibleCols.map((c) => c.header)
-    const columnStyles: Record<number, { cellWidth: number; halign?: string }> = {}
+
+    // Scale column widths to use full page width so table never overflows or looks cut off (A4 landscape - margins)
+    const TABLE_AVAILABLE_WIDTH_MM = 277
+    const totalRelativeWidth = visibleCols.reduce((sum, c) => sum + c.width, 0)
+    const columnStyles: Record<number, { cellWidth: number; halign?: "left" | "center" | "right" }> = {}
     visibleCols.forEach((c, i) => {
-      columnStyles[i] = c.key === "periodNo" ? { cellWidth: c.width, halign: "center" as const } : { cellWidth: c.width }
+      const cellWidth = Math.round((c.width / totalRelativeWidth) * TABLE_AVAILABLE_WIDTH_MM)
+      columnStyles[i] = c.key === "periodNo" ? { cellWidth, halign: "center" } : { cellWidth }
     })
 
     console.log('Generating PDF with', lesson.periods.length, 'periods,', validPeriods.length, 'with content,', visibleCols.length, 'columns')

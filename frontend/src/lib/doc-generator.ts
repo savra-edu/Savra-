@@ -15,6 +15,16 @@ function escapeHtml(text: string): string {
     .replace(/\n/g, "<br/>")
 }
 
+/** Strip NEP/NCF citation parentheses for Word output only (e.g. "(NEP 2020, 4.4, p. 5)"). */
+function stripNepNcfRefs(text: string): string {
+  if (!text || typeof text !== "string") return text
+  return text
+    .replace(/\s*\(NEP[^)]*\)/g, "")
+    .replace(/\s*\(NCF[^)]*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+}
+
 function triggerDownload(html: string, filename: string): void {
   const fullHtml = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:word">
@@ -47,7 +57,7 @@ const PERIOD_DOC_COLUMNS = [
 function getPeriodCellValue(p: LessonPeriod, key: string): string {
   if (key === "periodNo") return String(p.periodNo)
   const value = (p as unknown as Record<string, string | undefined>)[key]
-  return escapeHtml(value ?? "")
+  return escapeHtml(stripNepNcfRefs(value ?? ""))
 }
 
 export function downloadLessonPlanDoc(lesson: Lesson, teacherName: string): void {
